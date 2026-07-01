@@ -86,6 +86,10 @@ EOF
     echo "[ssl] certificates generated at ${SSL_DIR}"
 fi
 
+if [ -f "${SSL_DIR}/rootca.crt" ]; then
+    openssl x509 -in "${SSL_DIR}/rootca.crt" -outform der -out "${SSL_DIR}/rootca.cer" 2>/dev/null || true
+fi
+
 echo "[wireguard] waiting for ${WG_CONFIG_SOURCE}"
 while [ ! -s "${WG_CONFIG_SOURCE}" ]; do
     sleep 1

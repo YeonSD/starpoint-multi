@@ -116,6 +116,49 @@ function syncHostReadyState(session) {
     return true;
 }
 
+function resetBattleState(session) {
+    if (session.battleSceneStartRetryTimer) {
+        clearInterval(session.battleSceneStartRetryTimer);
+        session.battleSceneStartRetryTimer = undefined;
+    }
+    if (session.battleFinalizedProbeTimer) {
+        clearTimeout(session.battleFinalizedProbeTimer);
+        session.battleFinalizedProbeTimer = undefined;
+    }
+    if (session.battleConnectedProbeTimer) {
+        clearTimeout(session.battleConnectedProbeTimer);
+        session.battleConnectedProbeTimer = undefined;
+    }
+
+    session.battleStarted = false;
+    session.battleStartSent = false;
+    session.battleSceneReady.clear();
+    session.battleSceneStartSent = false;
+    session.battleSceneStartRetryCount = 0;
+    session.battleFinalizedProbeSent = false;
+    session.battleConnectedProbeSent = false;
+    session.battleLoadingConnectedSent = false;
+    session.battleSockets.clear();
+}
+
+function resetRoomAfterBattle(session) {
+    const hostKey = session.hostMateKey;
+    const hostMate = hostKey ? session.mates.get(hostKey) : undefined;
+
+    resetBattleState(session);
+
+    session.mates.clear();
+    if (hostKey && hostMate) {
+        hostMate.state = [0];
+        session.mates.set(hostKey, hostMate);
+    } else {
+        session.hostMateKey = undefined;
+    }
+
+    broadcastMates(session);
+    log(`[tcp] room_reset_after_battle room=${session.roomNumber} host=${hostMate?.connectionId || ""} mates=${session.mates.size}`);
+}
+
 function getOrCreateRoomSession(roomNumber, defaults = {}) {
     const key = roomNumber || "";
     let session = key ? roomSessionsByNumber.get(key) : undefined;
@@ -542,6 +585,7 @@ const tcpServer = net.createServer((socket) => {
                         log(`[tcp] battle_heartbeat ${peer} connectionId=${roomState?.connectionId}`);
                     } else if (clientMessageKind === 0 && notifyKind === 1) {
                         sendToBattleSession(roomState.session, battleServerMessage([2]));
+                        resetRoomAfterBattle(roomState.session);
                         log(`[tcp] battle_finalize room=${roomState.roomNumber} connectionId=${roomState.connectionId}`);
                     } else if (clientMessageKind === 1 && Array.isArray(notify)) {
                         const sent = sendToOtherBattleClients(

@@ -5,6 +5,7 @@ build/
 
 .env
 .env.local
+key/
 
 .cdn/
 .cn-cdn/

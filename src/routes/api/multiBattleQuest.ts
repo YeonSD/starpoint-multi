@@ -96,6 +96,7 @@ interface MultiFinishBody {
     room_sequence?: number,
     mate_player_result?: unknown[],
     statistics?: {
+        is_host?: boolean,
         party?: {
             characters?: ({ id?: number | null } | null)[],
             unison_characters?: ({ id?: number | null } | null)[]
@@ -185,6 +186,18 @@ function removeRoomParticipant(room: MultiRoom, viewerId: number): void {
         room.viewerId = nextViewerId
         room.playerId = nextPlayerId
     }
+}
+
+function resetRoomForNextRecruitment(room: MultiRoom): void {
+    room.status = "waiting"
+    room.participants.clear()
+    room.participants.set(room.viewerId, room.playerId)
+    for (const [viewerId, mappedRoom] of roomsByViewer.entries()) {
+        if (mappedRoom.roomNumber === room.roomNumber && viewerId !== room.viewerId) {
+            roomsByViewer.delete(viewerId)
+        }
+    }
+    roomsByViewer.set(room.viewerId, room)
 }
 
 function findRoomForBody(body: { viewer_id: number, room_number?: string, room_sequence?: number }): MultiRoom | undefined {
@@ -508,6 +521,28 @@ const routes = async (fastify: FastifyInstance) => {
             "message": "No players bound to account."
         })
 
+        const existingRoom = roomsByViewer.get(viewerId)
+        if (
+            existingRoom !== undefined
+            && existingRoom.viewerId === viewerId
+            && existingRoom.questId === body.quest_id
+            && existingRoom.categoryId === body.category
+        ) {
+            existingRoom.partyId = body.party_id
+            resetRoomForNextRecruitment(existingRoom)
+
+            reply.header("content-type", "application/x-msgpack")
+            return reply.status(200).send({
+                "data_headers": generateDataHeaders({
+                    viewer_id: viewerId
+                }),
+                "data": {
+                    "room_number": existingRoom.roomNumber,
+                    "room_url": buildInvitationUrl(request, existingRoom)
+                }
+            })
+        }
+
         const roomNumber = generateRoomNumber()
         const room: MultiRoom = {
             roomNumber,
@@ -815,7 +850,13 @@ const routes = async (fastify: FastifyInstance) => {
         })
 
         const room = findRoomForBody(body)
-        if (room !== undefined) room.status = "waiting"
+        if (room !== undefined) {
+            if (body.statistics?.is_host === false) {
+                removeRoomParticipant(room, viewerId)
+            } else {
+                resetRoomForNextRecruitment(room)
+            }
+        }
 
         const dataHeaders = generateDataHeaders({
             viewer_id: viewerId

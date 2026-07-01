@@ -7,6 +7,7 @@ build/
 .env
 .env.local
 key/
+deployment/ssl/
 
 .cdn/
 .cn-cdn/

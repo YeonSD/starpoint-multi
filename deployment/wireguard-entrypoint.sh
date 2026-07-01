@@ -12,41 +12,51 @@ mkdir -p /etc/wireguard /run/dnsmasq
 
 # Generate SSL certificates for nginx HTTPS proxy if not already present.
 # Uses two-tier PKI: rootca (installed on device) signs server cert (used by nginx).
+# nsCertType = sslCA, emailCA, objCA is required for Kakao SDK isRealHost() to accept the cert.
 SSL_DIR="${WG_CONFIG_SOURCE%/*}/ssl"
 mkdir -p "${SSL_DIR}"
 
 if [ ! -f "${SSL_DIR}/rootca.crt" ]; then
     echo "[ssl] generating root CA certificate"
     cat > /tmp/rootca.cnf <<EOF
+extensions = v3_ca
 [req]
 prompt = no
-distinguished_name = dn
-x509_extensions = v3_ca
-[dn]
-C = KR
-O = Root Certificate
-CN = Root Certificate CA
+extensions = v3_ca
+distinguished_name = req_distinguished_name
 [v3_ca]
-basicConstraints = critical, CA:TRUE
-subjectKeyIdentifier = hash
+basicConstraints       = critical, CA:TRUE
+subjectKeyIdentifier   = hash
 authorityKeyIdentifier = keyid:always, issuer:always
-keyUsage = keyCertSign, cRLSign
+keyUsage               = keyCertSign, cRLSign
+nsCertType             = sslCA, emailCA, objCA
+[req_distinguished_name]
+C = KR
+ST = KR
+O = Root Certificate
+OU = Root Certificate
+CN = Root Certificate CA
 EOF
     openssl ecparam -out "${SSL_DIR}/rootca.key" -name prime256v1 -genkey 2>/dev/null
-    openssl req -new -x509 -sha256 \
+    openssl req -new -sha256 \
         -key "${SSL_DIR}/rootca.key" \
+        -out /tmp/rootca.csr \
+        -config /tmp/rootca.cnf 2>/dev/null
+    openssl x509 -req -sha256 -days 3650 \
+        -in /tmp/rootca.csr \
+        -signkey "${SSL_DIR}/rootca.key" \
         -out "${SSL_DIR}/rootca.crt" \
-        -days 3650 -config /tmp/rootca.cnf 2>/dev/null
+        -extfile /tmp/rootca.cnf 2>/dev/null
 
     echo "[ssl] generating server certificate signed by root CA"
-    cat > /tmp/server_req.cnf <<EOF
+    cat > /tmp/server.cnf <<EOF
+extensions = extend
 [req]
 prompt = no
 distinguished_name = dn
 [dn]
 CN = na.wdfp.kakaogames.com
-EOF
-    cat > /tmp/server_ext.cnf <<EOF
+[extend]
 basicConstraints = CA:FALSE
 authorityKeyIdentifier = keyid,issuer
 subjectKeyIdentifier = hash
@@ -58,21 +68,21 @@ DNS.1 = na.wdfp.kakaogames.com
 DNS.2 = patch.wdfp.kakaogames.com
 DNS.3 = gc-openapi-zinny3.kakaogames.com
 DNS.4 = gc-infodesk-zinny3.kakaogames.com
-DNS.5 = openapi-zinny3.game.kakaogames.com
+DNS.5 = openapi-zinny3.game.kakao.com
 EOF
     openssl ecparam -out "${SSL_DIR}/server.key" -name prime256v1 -genkey 2>/dev/null
     openssl req -new -sha256 \
         -key "${SSL_DIR}/server.key" \
         -out /tmp/server.csr \
-        -config /tmp/server_req.cnf 2>/dev/null
+        -config /tmp/server.cnf 2>/dev/null
     openssl x509 -req -sha256 -days 730 \
         -in /tmp/server.csr \
         -CA "${SSL_DIR}/rootca.crt" \
         -CAkey "${SSL_DIR}/rootca.key" \
         -CAcreateserial \
         -out "${SSL_DIR}/server.crt" \
-        -extfile /tmp/server_ext.cnf 2>/dev/null
-    rm -f /tmp/rootca.cnf /tmp/server_req.cnf /tmp/server_ext.cnf /tmp/server.csr
+        -extfile /tmp/server.cnf 2>/dev/null
+    rm -f /tmp/rootca.cnf /tmp/rootca.csr /tmp/server.cnf /tmp/server.csr
     echo "[ssl] certificates generated at ${SSL_DIR}"
 fi
 
@@ -93,6 +103,9 @@ domain-needed
 bogus-priv
 address=/na.wdfp.kakaogames.com/${WG_SERVER_IP}
 address=/patch.wdfp.kakaogames.com/${WG_SERVER_IP}
+address=/gc-openapi-zinny3.kakaogames.com/${WG_SERVER_IP}
+address=/gc-infodesk-zinny3.kakaogames.com/${WG_SERVER_IP}
+address=/openapi-zinny3.game.kakao.com/${WG_SERVER_IP}
 EOF
 
 sysctl -w net.ipv4.ip_forward=1 >/dev/null || true

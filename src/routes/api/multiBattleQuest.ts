@@ -203,6 +203,13 @@ function resetRoomForNextRecruitment(room: MultiRoom): void {
     roomsByViewer.set(room.viewerId, room)
 }
 
+function markRoomWaitingAfterBattle(room: MultiRoom): void {
+    room.status = "waiting"
+    for (const viewerId of room.participants.keys()) {
+        roomsByViewer.set(viewerId, room)
+    }
+}
+
 function findRoomForBody(body: { viewer_id: number, room_number?: string, room_sequence?: number }): MultiRoom | undefined {
     if (body.room_number) return rooms.get(body.room_number)
     if (body.room_sequence !== undefined) return roomsBySequence.get(body.room_sequence)
@@ -864,10 +871,10 @@ const routes = async (fastify: FastifyInstance) => {
 
         const room = findRoomForBody(body)
         if (room !== undefined) {
-            if (body.statistics?.is_host === false) {
+            if (body.is_accomplished === false) {
                 removeRoomParticipant(room, viewerId)
             } else {
-                resetRoomForNextRecruitment(room)
+                markRoomWaitingAfterBattle(room)
             }
         }
 

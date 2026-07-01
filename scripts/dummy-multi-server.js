@@ -6,7 +6,7 @@ const path = require("path");
 const host = process.env.STARPOINT_DUMMY_MULTI_HOST || "0.0.0.0";
 const port = Number.parseInt(process.env.STARPOINT_MULTI_PORT || process.env.MULTI_SERVER_PORT || "18888", 10);
 const responseMode = process.env.STARPOINT_DUMMY_MULTI_RESPONSE_MODE || "basic";
-const acceptRoomNumber = process.env.STARPOINT_DUMMY_MULTI_ACCEPT_ROOM_NUMBER === "1";
+const acceptRoomNumber = process.env.STARPOINT_DUMMY_MULTI_ACCEPT_ROOM_NUMBER !== "0";
 const pushHeartbeatMs = Number.parseInt(process.env.STARPOINT_DUMMY_MULTI_PUSH_HEARTBEAT_MS || "0", 10);
 const debugBattleFinalizedAfterSceneReady = process.env.STARPOINT_DUMMY_MULTI_DEBUG_FINALIZED === "1";
 const debugBattleConnectedAfterSceneReady = process.env.STARPOINT_DUMMY_MULTI_DEBUG_CONNECTED === "1";
@@ -142,21 +142,16 @@ function resetBattleState(session) {
 }
 
 function resetRoomAfterBattle(session) {
-    const hostKey = session.hostMateKey;
-    const hostMate = hostKey ? session.mates.get(hostKey) : undefined;
-
     resetBattleState(session);
+    session.returningFromBattle = true;
 
-    session.mates.clear();
-    if (hostKey && hostMate) {
-        hostMate.state = [0];
-        session.mates.set(hostKey, hostMate);
-    } else {
-        session.hostMateKey = undefined;
+    for (const [mateKey, mate] of session.mates.entries()) {
+        mate.state = [0];
+        session.mates.set(mateKey, mate);
     }
 
     broadcastMates(session);
-    log(`[tcp] room_reset_after_battle room=${session.roomNumber} host=${hostMate?.connectionId || ""} mates=${session.mates.size}`);
+    log(`[tcp] room_reset_after_battle room=${session.roomNumber} host=${session.hostMateKey || ""} mates=${session.mates.size}`);
 }
 
 function getOrCreateRoomSession(roomNumber, defaults = {}) {
@@ -184,6 +179,7 @@ function getOrCreateRoomSession(roomNumber, defaults = {}) {
         battleConnectedProbeTimer: undefined,
         battleConnectedProbeSent: false,
         battleLoadingConnectedSent: false,
+        returningFromBattle: false,
         mates: new Map(),
         sockets: new Set(),
         battleSockets: new Set()
@@ -642,6 +638,8 @@ const tcpServer = net.createServer((socket) => {
                             const session = roomState.session;
                             if (session.battleStarted) {
                                 log(`[tcp] lobby_bye_during_battle room=${session.roomNumber} connectionId=${roomState.connectionId}`);
+                            } else if (session.returningFromBattle) {
+                                log(`[tcp] lobby_bye_ignored_after_battle room=${session.roomNumber} connectionId=${roomState.connectionId}`);
                             } else if (session.hostMateKey === roomState.mateKey) {
                                 sendToSession(session, disbanded(roomState.connectionId));
                                 roomSessionsByNumber.delete(session.roomNumber || "");
@@ -690,6 +688,7 @@ const tcpServer = net.createServer((socket) => {
                             const startPayload = getSessionMateList(roomState.session);
                             roomState.session.battleStarted = true;
                             roomState.session.battleStartSent = false;
+                            roomState.session.returningFromBattle = false;
                             sendToSession(roomState.session, startBattle(startPayload));
                             log(`[tcp] start_battle room=${roomState.session.roomNumber} host=${roomState.connectionId} mates=${startPayload.length}`);
                             maybeSendBattleLoadingConnected(roomState.session);
@@ -726,6 +725,11 @@ const tcpServer = net.createServer((socket) => {
             session.sockets.delete(roomClientRef);
             if (session.battleStarted) {
                 log(`[tcp] lobby_close_during_battle room=${session.roomNumber} connectionId=${roomState.connectionId}`);
+                log(`[tcp] close ${peer} error=${hadError}`);
+                return;
+            }
+            if (session.returningFromBattle) {
+                log(`[tcp] lobby_close_ignored_after_battle room=${session.roomNumber} connectionId=${roomState.connectionId}`);
                 log(`[tcp] close ${peer} error=${hadError}`);
                 return;
             }

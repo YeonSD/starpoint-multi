@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { SessionType } from "../../data/types";
 import { getClientSerializedData, serializePlayerData } from "../../data/utils";
-import { collectPlayerDataPooledExpSync, collectPlayerPooledExpSync, dailyResetPlayerDataSync, generateViewerIdSession, getAccountPlayers, getPlayerActiveMissionsSync, getPlayerBoxGachasSync, getPlayerCharactersManaNodesSync, getPlayerCharactersSync, getPlayerClearedRegularMissionListSync, getPlayerDailyChallengePointListSync, getPlayerDrawnQuestsSync, getPlayerEquipmentListSync, getPlayerGachaInfoListSync, getPlayerItemsSync, getPlayerMultiSpecialExchangeCampaignsSync, getPlayerOptionsSync, getPlayerPartyGroupListSync, getPlayerPeriodicRewardPointsSync, getPlayerQuestProgressSync, getPlayerStartDashExchangeCampaignsSync, getPlayerSync, getPlayerTriggeredTutorialsSync, getSession, insertDefaultPlayerSync, updatePlayerSync } from "../../data/wdfpData";
+import { collectPlayerDataPooledExpSync, collectPlayerPooledExpSync, dailyResetPlayerDataSync, deleteSession, getAccountPlayers, getPlayerActiveMissionsSync, getPlayerBoxGachasSync, getPlayerCharactersManaNodesSync, getPlayerCharactersSync, getPlayerClearedRegularMissionListSync, getPlayerDailyChallengePointListSync, getPlayerDrawnQuestsSync, getPlayerEquipmentListSync, getPlayerGachaInfoListSync, getPlayerItemsSync, getPlayerMultiSpecialExchangeCampaignsSync, getPlayerOptionsSync, getPlayerPartyGroupListSync, getPlayerPeriodicRewardPointsSync, getPlayerQuestProgressSync, getPlayerStartDashExchangeCampaignsSync, getPlayerSync, getPlayerTriggeredTutorialsSync, getSession, insertDefaultPlayerSync, insertSessionWithToken, updatePlayerSync } from "../../data/wdfpData";
 import { generateDataHeaders } from "../../utils";
 
 interface LoadBody {
@@ -37,8 +37,15 @@ const routes = async (fastify: FastifyInstance) => {
         const accountId = session.accountId
         let viewerSession = await getSession(String(viewerId))
         if (viewerSession === null || viewerSession.type !== SessionType.VIEWER || viewerSession.accountId !== accountId) {
-            viewerSession = await generateViewerIdSession(accountId)
-            viewerId = Number.parseInt(viewerSession.token)
+            if (viewerSession !== null) {
+                await deleteSession(viewerSession.token)
+            }
+            viewerSession = await insertSessionWithToken({
+                token: String(viewerId),
+                expires: new Date(),
+                accountId: accountId,
+                type: SessionType.VIEWER
+            })
         }
 
         let playerIds = await getAccountPlayers(accountId)

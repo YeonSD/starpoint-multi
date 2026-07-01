@@ -41,6 +41,7 @@ import indexWebApiPlugin from "./routes/web_api"
 import openapiPlugin from "./routes/openapi";
 import infodeskPlugin from "./routes/infodesk";
 import { ensureWireGuardServerConfig } from "./lib/wireguard";
+import { startScheduledCurrencyGrantRunner } from "./lib/itemGrantSchedules";
 
 // gc-openapi-zinny3.kakaogames.com
 // gc-infodesk-zinny3.kakaogames.com
@@ -202,6 +203,7 @@ fastify.register(fastifyStatic, {
 // listen
 const listenHost = process.env.LISTEN_HOST ?? "localhost"
 ensureWireGuardServerConfig()
+startScheduledCurrencyGrantRunner()
 
 const envListenPort = process.env.LISTEN_PORT === undefined ? 8000 : Number.parseInt(process.env.LISTEN_PORT)
 const listenPort = isNaN(envListenPort) ? 8000 : envListenPort

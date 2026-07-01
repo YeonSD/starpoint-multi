@@ -15,16 +15,56 @@
     </header>
     <div class="md:grid md:grid-cols-sidebar flex flex-col gap-5 w-full h-fit">
         <nav class="px-3 py-5 gap-3 flex flex-col bg-surface-container-low rounded-3xl h-fit w-full">
-            <a href="/" class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">Dashboard</a>
-            <a href="/player" class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">Players</a>
-            <a href="/rooms" class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">Rooms</a>
-            <a href="/items" class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">Items</a>
-            <div class="px-5 py-3 flex gap-3 items-center bg-primary rounded-full w-full font-bold text-on-primary text-lg">Source Code</div>
+            <a href="/"
+                class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
+                    class="fill-on-surface">
+                    <path
+                        d="M520-600v-240h320v240H520ZM120-440v-400h320v400H120Zm400 320v-400h320v400H520Zm-400 0v-240h320v240H120Zm80-400h160v-240H200v240Zm400 320h160v-240H600v240Zm0-480h160v-80H600v80ZM200-200h160v-80H200v80Zm160-320Zm240-160Zm0 240ZM360-280Z" />
+                </svg>
+                Dashboard
+            </a>
+            <a href="/player"
+                class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
+                    class="fill-on-surface">
+                    <path
+                        d="M40-160v-112q0-34 17.5-62.5T104-378q62-31 126-46.5T360-440q66 0 130 15.5T616-378q29 15 46.5 43.5T680-272v112H40Zm720 0v-120q0-44-24.5-84.5T666-434q51 6 96 20.5t84 35.5q36 20 55 44.5t19 53.5v120H760ZM360-480q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47Zm400-160q0 66-47 113t-113 47q-11 0-28-2.5t-28-5.5q27-32 41.5-71t14.5-81q0-42-14.5-81T544-792q14-5 28-6.5t28-1.5q66 0 113 47t47 113ZM120-240h480v-32q0-11-5.5-20T580-306q-54-27-109-40.5T360-360q-56 0-111 13.5T140-306q-9 5-14.5 14t-5.5 20v32Zm240-320q33 0 56.5-23.5T440-640q0-33-23.5-56.5T360-720q-33 0-56.5 23.5T280-640q0 33 23.5 56.5T360-560Zm0 320Zm0-400Z" />
+                </svg>
+                Players
+            </a>
+            <a href="/rooms"
+                class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
+                    class="fill-on-surface">
+                    <path d="M160-160v-400h160v400H160Zm240 0v-640h160v640H400Zm240 0v-280h160v280H640Z" />
+                </svg>
+                Rooms
+            </a>
+            <a href="/items"
+                class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
+                    class="fill-on-surface">
+                    <path d="M160-200h640v-80H160v80Zm0-160h640v-80H160v80Zm0-160h640v-80H160v80Zm0-160h640v-80H160v80Z" />
+                </svg>
+                Items
+            </a>
+            <div
+                class="px-5 py-3 flex gap-3 items-center bg-primary rounded-full w-full font-bold text-on-primary text-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
+                    class="fill-on-primary">
+                    <path
+                        d="M320-240 80-480l240-240 57 57-184 184 183 183-56 56Zm320 0-57-57 184-184-183-183 56-56 240 240-240 240Z" />
+                </svg>
+                Source Code
+            </div>
         </nav>
         <main class="w-full flex flex-col gap-5">
-            <section class="w-full border border-outline-variant rounded-3xl p-5 bg-surface-container-lowest flex flex-col gap-5">
+            <section
+                class="w-full border border-outline-variant rounded-3xl p-5 bg-surface-container-lowest flex flex-col gap-5">
                 <h2 class="text-2xl font-bold text-on-background">Source Code</h2>
-                <p class="text-on-surface-variant">This project is a multiplayer-focused fork of the open source Starpoint server emulator.</p>
+                <p class="text-on-surface-variant">This project is a multiplayer-focused fork of the open source
+                    Starpoint server emulator.</p>
                 <div class="grid md:grid-cols-2 gap-4">
                     <a href="https://github.com/Duosion/starpoint"
                         class="border border-outline-variant rounded-2xl p-5 bg-surface hover:bg-surface-container-low transition-colors">
@@ -34,7 +74,8 @@
                     <a href="https://github.com/YeonSD/starpoint-multi"
                         class="border border-outline-variant rounded-2xl p-5 bg-surface hover:bg-surface-container-low transition-colors">
                         <h3 class="text-xl font-bold text-on-background">Starpoint Multi</h3>
-                        <p class="text-on-surface-variant mt-2">This fork for multiplayer restoration and self-hosted operation.</p>
+                        <p class="text-on-surface-variant mt-2">This fork for multiplayer restoration and self-hosted
+                            operation.</p>
                     </a>
                 </div>
             </section>

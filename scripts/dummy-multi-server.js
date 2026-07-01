@@ -246,6 +246,33 @@ function isPendingBattleReturn(session, mateKey) {
     return Boolean(session?.returningFromBattle && mateKey && session.returnPendingMates?.has(mateKey));
 }
 
+function removeMateFromSession(session, roomState, reason) {
+    if (!session || !roomState?.mateKey || !session.mates.has(roomState.mateKey)) return false;
+
+    const viewerId = getViewerIdFromRoomState(roomState);
+    session.mates.delete(roomState.mateKey);
+    roomsByViewer.delete(roomState.viewerId);
+
+    if (session.hostMateKey === roomState.mateKey) {
+        session.hostMateKey = session.mates.keys().next().value;
+    }
+
+    if (session.mates.size === 0) {
+        notifyHttpRoomEvent("empty", session, viewerId);
+        roomSessionsByNumber.delete(session.roomNumber || "");
+        session.sockets.clear();
+        session.battleSockets.clear();
+        log(`[tcp] room_empty room=${session.roomNumber} reason=${reason} viewer=${viewerId || ""}`);
+    } else {
+        notifyHttpRoomEvent("leave", session, viewerId);
+        syncHostReadyState(session);
+        broadcastMates(session);
+        log(`[tcp] room_mate_removed room=${session.roomNumber} reason=${reason} connectionId=${roomState.connectionId} remaining=${session.mates.size}`);
+    }
+
+    return true;
+}
+
 function message(serverMessage) {
     return [1, serverMessage];
 }
@@ -707,10 +734,7 @@ const tcpServer = net.createServer((socket) => {
                                 session.mates.clear();
                                 log(`[tcp] room_disbanded room=${session.roomNumber} host=${roomState.connectionId}`);
                             } else {
-                                notifyHttpRoomEvent("leave", session, getViewerIdFromRoomState(roomState));
-                                session.mates.delete(roomState.mateKey);
-                                syncHostReadyState(session);
-                                broadcastMates(session);
+                                removeMateFromSession(session, roomState, "lobby_bye");
                             }
                         }
                         log(`[tcp] notify ${peer} kind=${notifyKind} name=${notifyName}`);
@@ -777,6 +801,9 @@ const tcpServer = net.createServer((socket) => {
             const session = roomState.session;
             if (roomState.socklet === "cooperation_battle") {
                 session.battleSockets.delete(roomClientRef);
+                if (session.battleStarted) {
+                    removeMateFromSession(session, roomState, "battle_close");
+                }
                 log(`[tcp] battle_close room=${session.roomNumber} connectionId=${roomState.connectionId}`);
                 log(`[tcp] close ${peer} error=${hadError}`);
                 return;
@@ -801,10 +828,7 @@ const tcpServer = net.createServer((socket) => {
                     session.sockets.clear();
                     log(`[tcp] room_disbanded_by_close room=${session.roomNumber} host=${roomState.connectionId}`);
                 } else {
-                    notifyHttpRoomEvent("leave", session, getViewerIdFromRoomState(roomState));
-                    session.mates.delete(roomState.mateKey);
-                    syncHostReadyState(session);
-                    broadcastMates(session);
+                    removeMateFromSession(session, roomState, "lobby_close");
                 }
             }
         }

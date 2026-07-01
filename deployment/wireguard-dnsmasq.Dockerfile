@@ -5,6 +5,7 @@ RUN apt-get update \
         dnsmasq \
         iproute2 \
         iptables \
+        openssl \
         procps \
         wireguard-tools \
     && rm -rf /var/lib/apt/lists/*

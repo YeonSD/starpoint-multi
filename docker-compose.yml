@@ -16,10 +16,23 @@ services:
       STARPOINT_WG_PORT: ${STARPOINT_WG_PORT:-51820}
       STARPOINT_DNS_UPSTREAM: ${STARPOINT_DNS_UPSTREAM:-1.1.1.1}
     ports:
+      - "80:80"
+      - "443:443"
       - "8000:8000"
       - "51820:51820/udp"
     volumes:
       - ./.generated/wireguard:/config
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    network_mode: "service:wireguard"
+    depends_on:
+      - wireguard
+    command: ["/bin/sh", "-c", "until [ -f /etc/nginx/ssl/server.crt ]; do sleep 1; done; exec nginx -g 'daemon off;'"]
+    volumes:
+      - ./.generated/wireguard/ssl:/etc/nginx/ssl:ro
+      - ./deployment/nginx/wg-proxy.conf:/etc/nginx/nginx.conf:ro
 
   starpoint:
     build: .

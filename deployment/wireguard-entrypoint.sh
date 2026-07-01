@@ -10,6 +10,36 @@ DNS_UPSTREAM="${STARPOINT_DNS_UPSTREAM:-1.1.1.1}"
 
 mkdir -p /etc/wireguard /run/dnsmasq
 
+# Generate SSL certificates for nginx HTTPS proxy if not already present
+SSL_DIR="${WG_CONFIG_SOURCE%/*}/ssl"
+mkdir -p "${SSL_DIR}"
+
+if [ ! -f "${SSL_DIR}/server.crt" ]; then
+    echo "[ssl] generating self-signed certificates"
+    cat > /tmp/ssl.cnf <<EOF
+[req]
+distinguished_name = req_distinguished_name
+x509_extensions = v3_req
+prompt = no
+[req_distinguished_name]
+CN = World Flipper Private Server
+[v3_req]
+subjectAltName = @alt_names
+[alt_names]
+DNS.1 = na.wdfp.kakaogames.com
+DNS.2 = patch.wdfp.kakaogames.com
+DNS.3 = gc-openapi-zinny3.kakaogames.com
+DNS.4 = gc-infodesk-zinny3.kakaogames.com
+DNS.5 = openapi-zinny3.game.kakaogames.com
+EOF
+    openssl req -x509 -newkey rsa:2048 \
+        -keyout "${SSL_DIR}/server.key" \
+        -out "${SSL_DIR}/server.crt" \
+        -days 3650 -nodes \
+        -config /tmp/ssl.cnf 2>/dev/null
+    echo "[ssl] certificates generated at ${SSL_DIR}"
+fi
+
 echo "[wireguard] waiting for ${WG_CONFIG_SOURCE}"
 while [ ! -s "${WG_CONFIG_SOURCE}" ]; do
     sleep 1
@@ -31,11 +61,9 @@ address=/gc-openapi-zinny3.kakaogames.com/${WG_SERVER_IP}
 address=/gc-infodesk-zinny3.kakaogames.com/${WG_SERVER_IP}
 EOF
 
-sysctl -w net.ipv4.ip_forward=1 >/dev/null
+sysctl -w net.ipv4.ip_forward=1 >/dev/null || true
 iptables -t nat -C POSTROUTING -s "${WG_NETWORK}" -o eth0 -j MASQUERADE 2>/dev/null \
     || iptables -t nat -A POSTROUTING -s "${WG_NETWORK}" -o eth0 -j MASQUERADE
-iptables -t nat -C PREROUTING -i wg0 -p tcp --dport 80 -j REDIRECT --to-ports 8000 2>/dev/null \
-    || iptables -t nat -A PREROUTING -i wg0 -p tcp --dport 80 -j REDIRECT --to-ports 8000
 
 wg-quick up wg0
 

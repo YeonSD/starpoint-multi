@@ -28,6 +28,7 @@ const routes = async (fastify: FastifyInstance) => {
                 id: peer.id,
                 name: peer.name,
                 address: peer.address,
+                player_id: peer.playerId,
                 public_key: peer.publicKey,
                 created_at: peer.createdAt
             }))
@@ -36,13 +37,13 @@ const routes = async (fastify: FastifyInstance) => {
 
     fastify.post("/peers", async (request: FastifyRequest, reply: FastifyReply) => {
         const body = request.body as CreatePeerBody | undefined;
-        createWireGuardPeer(body?.name ?? "player");
+        createWireGuardPeer(body?.name);
         return reply.redirect("/player#wireguard");
     });
 
     fastify.get("/peers/create", async (request: FastifyRequest, reply: FastifyReply) => {
         const query = request.query as CreatePeerQuery;
-        createWireGuardPeer(query.name ?? "player");
+        createWireGuardPeer(query.name);
         return reply.redirect("/player#wireguard");
     });
 

@@ -17,7 +17,9 @@ export interface WireGuardPeer {
     address: string,
     privateKey: string,
     publicKey: string,
-    createdAt: string
+    createdAt: string,
+    playerId?: number,
+    linkedAt?: string
 }
 
 interface WireGuardRegistry {
@@ -127,18 +129,47 @@ export function ensureWireGuardServerConfig(): string {
 }
 
 function sanitizeName(name: string): string {
-    return name.trim().replace(/[^\w.-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "player";
+    return name.trim().replace(/[^\w.-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "pending-client";
 }
 
 export function listWireGuardPeers(): WireGuardPeer[] {
     return readRegistry().peers;
 }
 
+export function listUnlinkedWireGuardPeers(): WireGuardPeer[] {
+    return listWireGuardPeers().filter((peer) => peer.playerId === undefined);
+}
+
 export function getWireGuardPeer(id: string): WireGuardPeer | undefined {
     return readRegistry().peers.find((peer) => peer.id === id);
 }
 
-export function createWireGuardPeer(name: string): WireGuardPeer {
+export function getWireGuardPeerForPlayer(playerId: number): WireGuardPeer | undefined {
+    return readRegistry().peers.find((peer) => peer.playerId === playerId);
+}
+
+function stripCidr(address: string): string {
+    return address.split("/")[0];
+}
+
+export function linkWireGuardPeerByClientIp(clientIp: string | undefined, playerId: number): WireGuardPeer | undefined {
+    if (!clientIp || !playerId || Number.isNaN(playerId)) return undefined;
+
+    const registry = readRegistry();
+    const normalizedIp = clientIp.trim();
+    const peer = registry.peers.find((candidate) => stripCidr(candidate.address) === normalizedIp);
+    if (peer === undefined) return undefined;
+
+    if (peer.playerId !== playerId) {
+        peer.playerId = playerId;
+        peer.linkedAt = new Date().toISOString();
+        writeRegistry(registry);
+    }
+
+    return peer;
+}
+
+export function createWireGuardPeer(name = "pending-client"): WireGuardPeer {
     const registry = readRegistry();
     const keys = generateWireGuardKeyPair();
     const peer: WireGuardPeer = {
@@ -152,7 +183,7 @@ export function createWireGuardPeer(name: string): WireGuardPeer {
 
     registry.peers.push(peer);
     writeRegistry(registry);
-    writeFileSync(path.join(generatedDir, `${peer.name}-${peer.id}.conf`), buildClientConfig(peer), "utf-8");
+    writeFileSync(path.join(generatedDir, `peer-${peer.id}.conf`), buildClientConfig(peer), "utf-8");
     return peer;
 }
 

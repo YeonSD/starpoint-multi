@@ -125,3 +125,16 @@ export function getRequestPlatformSync(
 
     return Platform.ANDROID
 }
+
+export function getForwardedClientIp(request: FastifyRequest): string | undefined {
+    const forwardedFor = request.headers["x-forwarded-for"]
+    if (typeof forwardedFor === "string" && forwardedFor.trim()) {
+        return forwardedFor.split(",")[0].trim()
+    }
+
+    if (Array.isArray(forwardedFor) && forwardedFor[0]) {
+        return forwardedFor[0].split(",")[0].trim()
+    }
+
+    return request.ip
+}

@@ -2,7 +2,8 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { SessionType } from "../../data/types";
 import { getClientSerializedData, serializePlayerData } from "../../data/utils";
 import { collectPlayerDataPooledExpSync, collectPlayerPooledExpSync, dailyResetPlayerDataSync, deleteSession, getAccountPlayers, getPlayerActiveMissionsSync, getPlayerBoxGachasSync, getPlayerCharactersManaNodesSync, getPlayerCharactersSync, getPlayerClearedRegularMissionListSync, getPlayerDailyChallengePointListSync, getPlayerDrawnQuestsSync, getPlayerEquipmentListSync, getPlayerGachaInfoListSync, getPlayerItemsSync, getPlayerMultiSpecialExchangeCampaignsSync, getPlayerOptionsSync, getPlayerPartyGroupListSync, getPlayerPeriodicRewardPointsSync, getPlayerQuestProgressSync, getPlayerStartDashExchangeCampaignsSync, getPlayerSync, getPlayerTriggeredTutorialsSync, getSession, insertDefaultPlayerSync, insertSessionWithToken, updatePlayerSync } from "../../data/wdfpData";
-import { generateDataHeaders } from "../../utils";
+import { linkWireGuardPeerByClientIp } from "../../lib/wireguard";
+import { generateDataHeaders, getForwardedClientIp } from "../../utils";
 
 interface LoadBody {
     app_secret: string,
@@ -60,6 +61,7 @@ const routes = async (fastify: FastifyInstance) => {
             "error": "Internal Server Error",
             "message": "No players bound to account."
         })
+        linkWireGuardPeerByClientIp(getForwardedClientIp(request), playerId)
 
         // get last login time
         dailyResetPlayerDataSync(player)

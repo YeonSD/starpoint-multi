@@ -3,7 +3,7 @@ import { readFileSync } from "fs";
 import path from "path";
 import { staticPagesDir } from ".";
 import { getAllPlayersSync, getPlayerSync } from "../../data/wdfpData";
-import { listWireGuardPeers } from "../../lib/wireguard";
+import { getWireGuardPeerForPlayer, listUnlinkedWireGuardPeers } from "../../lib/wireguard";
 
 interface GetPlayerParams {
     playerId: string | undefined
@@ -52,10 +52,10 @@ const routes = async (fastify: FastifyInstance) => {
             }  
         }
 
-        const wireGuardPeers = listWireGuardPeers()
+        const wireGuardPeers = listUnlinkedWireGuardPeers()
         let wireGuardContent = ""
         if (wireGuardPeers.length === 0) {
-            wireGuardContent = `<p class="text-on-surface-variant">No WireGuard clients yet.</p>`
+            wireGuardContent = `<p class="text-on-surface-variant">No pending WireGuard QR codes.</p>`
         } else {
             for (const peer of wireGuardPeers) {
                 const id = escapeHtml(peer.id)
@@ -64,7 +64,7 @@ const routes = async (fastify: FastifyInstance) => {
                 const createdAt = escapeHtml(new Date(peer.createdAt).toLocaleString())
                 wireGuardContent += `<article class="border border-outline-variant rounded-3xl p-4 bg-surface flex flex-col gap-4">
                     <section class="flex flex-col gap-1">
-                        <h3 class="text-xl font-bold text-on-background">${name}</h3>
+                        <h3 class="text-xl font-bold text-on-background">Pending QR</h3>
                         <p class="text-on-surface-variant">${address}</p>
                         <p class="text-sm text-on-surface-variant">Created ${createdAt}</p>
                     </section>
@@ -99,10 +99,31 @@ const routes = async (fastify: FastifyInstance) => {
         if (player === null) return reply.redirect("/player");
 
         let html = readFileSync(path.join(__dirname, staticPagesDir, "player.html")).toString("utf-8")
+        const wireGuardPeer = getWireGuardPeerForPlayer(parsedPlayerId)
+        const wireGuardDetails = wireGuardPeer === undefined ? `
+            <section class="mt-5 flex flex-col p-5 border border-outline-variant bg-surface-container rounded-3xl w-full gap-3">
+                <h3 class="text-xl text-on-background font-semibold">WireGuard</h3>
+                <p class="text-on-surface-variant">No WireGuard QR is linked to this player.</p>
+            </section>` : `
+            <section class="mt-5 flex flex-col p-5 border border-outline-variant bg-surface-container rounded-3xl w-full gap-4">
+                <section class="flex flex-col gap-1">
+                    <h3 class="text-xl text-on-background font-semibold">WireGuard</h3>
+                    <p class="text-on-surface-variant">${escapeHtml(wireGuardPeer.address)}</p>
+                    <p class="text-sm text-on-surface-variant">Linked ${escapeHtml(new Date(wireGuardPeer.linkedAt ?? wireGuardPeer.createdAt).toLocaleString())}</p>
+                </section>
+                <img src="/api/wireguard/peers/${escapeHtml(wireGuardPeer.id)}/qr" alt="WireGuard QR" class="w-48 h-48 bg-white p-2 rounded-3xl self-center">
+                <section class="grid grid-cols-2 gap-3">
+                    <a href="/api/wireguard/peers/${escapeHtml(wireGuardPeer.id)}/config"
+                        class="text-center px-4 py-3 rounded-full bg-primary text-on-primary font-bold hover:opacity-90 transition-opacity">Config</a>
+                    <a href="/api/wireguard/peers/${escapeHtml(wireGuardPeer.id)}/server-peer"
+                        class="text-center px-4 py-3 rounded-full border border-outline text-on-surface font-bold hover:bg-surface-container-low transition-colors">Peer</a>
+                </section>
+            </section>`
 
         html = html.replace("{{playerName}}", player.name)
             .replace("{{playerComment}}", player.comment)
             .replace(/{{playerId}}/g, String(parsedPlayerId))
+            .replace("{{wireGuardDetails}}", wireGuardDetails)
             .replace("{{uploadError}}", error === undefined ? '' : `<h3 class="text-xl text-error font-semibold mt-2">${error}</h3>`);
         
 

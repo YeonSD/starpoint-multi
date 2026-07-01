@@ -1,7 +1,8 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { SessionType } from "../../data/types";
 import { generateViewerIdSession, getAccountSessionsOfType, getPlayerFromAccountIdSync, getSession, insertDefaultPlayerSync } from "../../data/wdfpData";
-import { generateDataHeaders } from "../../utils";
+import { linkWireGuardPeerByClientIp } from "../../lib/wireguard";
+import { generateDataHeaders, getForwardedClientIp } from "../../utils";
 
 interface GetHeaderResponseBody {
     viewer_id: number
@@ -55,11 +56,12 @@ const routes = async (fastify: FastifyInstance) => {
         const accountId = session.accountId
 
         // Create the player data if it doesn't exist.
-        const accountPlayer = getPlayerFromAccountIdSync(accountId)
+        let accountPlayer = getPlayerFromAccountIdSync(accountId)
         if (accountPlayer === null) {    
             // create new player account
-            insertDefaultPlayerSync(accountId)
+            accountPlayer = insertDefaultPlayerSync(accountId)
         }
+        linkWireGuardPeerByClientIp(getForwardedClientIp(request), accountPlayer.id)
 
         // generate viewer id
         const viewerIds = await getAccountSessionsOfType(accountId, SessionType.VIEWER)

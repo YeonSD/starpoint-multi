@@ -149,6 +149,9 @@ function generateRoomNumber(): string {
 }
 
 function rememberRoom(room: MultiRoom): MultiRoom {
+    if (!room.roomNumber) {
+        throw new Error("Cannot register a multiplayer room without a room number.")
+    }
     rooms.set(room.roomNumber, room)
     roomsBySequence.set(room.roomSequence, room)
     roomsByViewer.set(room.viewerId, room)
@@ -614,7 +617,17 @@ const routes = async (fastify: FastifyInstance) => {
             "message": "No players bound to account."
         })
 
-        const room = rooms.get(body.room_number) ?? {
+        const existingRoom = body.room_number
+            ? rooms.get(body.room_number)
+            : roomsByViewer.get(viewerId)
+        if (body.room_number === "" && existingRoom === undefined) {
+            return reply.status(404).send({
+                "error": "Not Found",
+                "message": "No active room for viewer."
+            })
+        }
+
+        const room = existingRoom ?? {
             roomNumber: body.room_number,
             viewerId,
             playerId,

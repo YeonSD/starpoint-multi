@@ -676,14 +676,9 @@ const tcpServer = net.createServer((socket) => {
                         if (roomState?.session && roomState.mateKey) {
                             const session = roomState.session;
                             if (session.battleStarted) {
-                                notifyHttpRoomEvent("leave", session, getViewerIdFromRoomState(roomState));
-                                session.mates.delete(roomState.mateKey);
-                                syncHostReadyState(session);
-                                broadcastMates(session);
-                                if (session.mates.size === 0) {
-                                    roomSessionsByNumber.delete(session.roomNumber || "");
-                                    resetBattleState(session);
-                                }
+                                // The client normally closes the room socket while moving
+                                // into the battle socket. HTTP abort/finish handles real
+                                // battle exits; removing the mate here prevents BattleStart.
                                 log(`[tcp] lobby_bye_during_battle room=${session.roomNumber} connectionId=${roomState.connectionId}`);
                             } else if (session.returningFromBattle) {
                                 log(`[tcp] lobby_bye_ignored_after_battle room=${session.roomNumber} connectionId=${roomState.connectionId}`);

@@ -4,7 +4,7 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/public/tailwind.css">
-    <title>Starpoint - Items</title>
+    <title>Starpoint - Currency</title>
 </head>
 
 <body
@@ -24,8 +24,8 @@
         <main class="w-full flex flex-col gap-5">
             <section class="w-full border border-outline-variant rounded-3xl p-5 bg-surface-container-lowest flex flex-col gap-5">
                 <header>
-                    <h2 class="text-2xl font-bold text-on-background">Item Management</h2>
-                    <p id="grant-status" class="text-on-surface-variant">Grant items directly to player inventories. Mail delivery is not implemented yet.</p>
+                    <h2 class="text-2xl font-bold text-on-background">Currency Management</h2>
+                    <p id="grant-status" class="text-on-surface-variant">Grant lodestar beads or mana directly to player saves. Mail delivery is not implemented yet.</p>
                 </header>
                 <form id="grant-form" class="flex flex-col gap-5">
                     <section class="flex flex-col gap-3">
@@ -42,8 +42,9 @@
                         <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-3">{{playerOptions}}</div>
                     </section>
                     <section class="grid md:grid-cols-[1fr_160px_auto] gap-3">
-                        <select name="item_id" class="bg-surface-container rounded-2xl border border-outline-variant p-3" required>
-                            {{itemOptions}}
+                        <select name="currency" class="bg-surface-container rounded-2xl border border-outline-variant p-3" required>
+                            <option value="free_vmoney">성도석 (free_vmoney)</option>
+                            <option value="free_mana">마나 (free_mana)</option>
                         </select>
                         <input name="amount" type="number" min="1" value="1"
                             class="bg-surface-container rounded-2xl border border-outline-variant p-3" required>
@@ -66,7 +67,7 @@
             const payload = {
                 target,
                 player_ids: playerIds,
-                item_id: form.item_id.value,
+                currency: form.currency.value,
                 amount: form.amount.value
             };
 
@@ -77,10 +78,10 @@
             });
             const body = await response.json().catch(() => ({}));
             if (!response.ok) {
-                status.textContent = body.message || "Failed to grant item.";
+                status.textContent = body.message || "Failed to grant currency.";
                 return;
             }
-            status.textContent = `Granted item to ${body.result.length} player(s).`;
+            status.textContent = `Granted currency to ${body.result.length} player(s).`;
         });
     </script>
 </body>

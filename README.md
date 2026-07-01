@@ -59,7 +59,7 @@ Change the password from the Dashboard before exposing the server.
 - Dashboard: select the active gacha table, reset server time, change admin password
 - Players: view players, download/upload save JSON, create WireGuard client QR entries
 - Rooms: view active multiplayer rooms
-- Items: grant items directly to selected players or all players
+- Items: grant free lodestar beads (`free_vmoney`) or mana (`free_mana`) to selected players or all players
 - Source Code: links to upstream Starpoint and this fork
 
 ## Runtime Data

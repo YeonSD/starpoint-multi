@@ -3,7 +3,6 @@ import { readFileSync } from "fs";
 import path from "path";
 import { staticPagesDir } from ".";
 import { getAllPlayersSync } from "../../data/wdfpData";
-import { getItemCatalog } from "../../lib/itemCatalog";
 
 function escapeHtml(value: string | number): string {
     return value.toString()
@@ -18,7 +17,6 @@ const routes = async (fastify: FastifyInstance) => {
     fastify.get("/", async (_, reply: FastifyReply) => {
         let html = readFileSync(path.join(__dirname, staticPagesDir, "items.html")).toString("utf-8");
         const players = getAllPlayersSync();
-        const itemCatalog = getItemCatalog();
 
         html = html
             .replace("{{playerOptions}}", players.map((player) => `
@@ -27,10 +25,7 @@ const routes = async (fastify: FastifyInstance) => {
                     <span class="font-semibold">${escapeHtml(player.name)}</span>
                     <span class="text-on-surface-variant">#${player.id}</span>
                 </label>
-            `).join("") || `<p class="text-on-surface-variant">No players found.</p>`)
-            .replace("{{itemOptions}}", itemCatalog.map((item) => `
-                <option value="${item.id}">${escapeHtml(item.label)}</option>
-            `).join(""));
+            `).join("") || `<p class="text-on-surface-variant">No players found.</p>`);
 
         reply.header("content-type", "text/html; charset=utf-8");
         reply.send(html);

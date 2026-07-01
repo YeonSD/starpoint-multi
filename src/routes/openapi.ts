@@ -155,14 +155,10 @@ const routes = async (fastify: FastifyInstance) => {
 
         let session = await getSession(clientZat)
         if (session === null) {
-            // attempt to generate a new session
             const idpAlias = generateIdpAlias(body.appId, body.deviceId, body.os)
-            const accountId = Number.parseInt(body.playerId)
-            const account = isNaN(accountId) ? null : await getAccount(accountId)
+            const account = getAccountFromIdpIdSync(body.whiteKey)
             if (account && account.idpAlias === idpAlias) {
-                // delete old session
                 await deleteAccountSessionsOfType(account.id, SessionType.ZAT)
-                // generate new zat session
                 session = await insertSession({
                     expires: new Date(new Date().getTime() + 43200000),
                     accountId: account.id,

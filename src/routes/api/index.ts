@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { SessionType } from "../../data/types";
 import { getClientSerializedData, serializePlayerData } from "../../data/utils";
-import { collectPlayerDataPooledExpSync, collectPlayerPooledExpSync, dailyResetPlayerDataSync, getAccountPlayers, getPlayerActiveMissionsSync, getPlayerBoxGachasSync, getPlayerCharactersManaNodesSync, getPlayerCharactersSync, getPlayerClearedRegularMissionListSync, getPlayerDailyChallengePointListSync, getPlayerDrawnQuestsSync, getPlayerEquipmentListSync, getPlayerGachaInfoListSync, getPlayerItemsSync, getPlayerMultiSpecialExchangeCampaignsSync, getPlayerOptionsSync, getPlayerPartyGroupListSync, getPlayerPeriodicRewardPointsSync, getPlayerQuestProgressSync, getPlayerStartDashExchangeCampaignsSync, getPlayerSync, getPlayerTriggeredTutorialsSync, getSession, updatePlayerSync } from "../../data/wdfpData";
+import { collectPlayerDataPooledExpSync, collectPlayerPooledExpSync, dailyResetPlayerDataSync, generateViewerIdSession, getAccountPlayers, getPlayerActiveMissionsSync, getPlayerBoxGachasSync, getPlayerCharactersManaNodesSync, getPlayerCharactersSync, getPlayerClearedRegularMissionListSync, getPlayerDailyChallengePointListSync, getPlayerDrawnQuestsSync, getPlayerEquipmentListSync, getPlayerGachaInfoListSync, getPlayerItemsSync, getPlayerMultiSpecialExchangeCampaignsSync, getPlayerOptionsSync, getPlayerPartyGroupListSync, getPlayerPeriodicRewardPointsSync, getPlayerQuestProgressSync, getPlayerStartDashExchangeCampaignsSync, getPlayerSync, getPlayerTriggeredTutorialsSync, getSession, insertDefaultPlayerSync, updatePlayerSync } from "../../data/wdfpData";
 import { generateDataHeaders } from "../../utils";
 
 interface LoadBody {
@@ -34,15 +34,18 @@ const routes = async (fastify: FastifyInstance) => {
             "message": "Invalid zat provided."
         })
 
-        const viewerSession = await getSession(String(viewerId))
-        if (viewerSession === null || viewerSession.type !== SessionType.VIEWER) return reply.status(400).send({
-            "error": "Bad Request",
-            "message": "Invalid viewer ID provided."
-        })
-
         const accountId = session.accountId
+        let viewerSession = await getSession(String(viewerId))
+        if (viewerSession === null || viewerSession.type !== SessionType.VIEWER || viewerSession.accountId !== accountId) {
+            viewerSession = await generateViewerIdSession(accountId)
+            viewerId = Number.parseInt(viewerSession.token)
+        }
 
-        const playerIds = await getAccountPlayers(accountId)
+        let playerIds = await getAccountPlayers(accountId)
+        if (playerIds.length === 0) {
+            const player = insertDefaultPlayerSync(accountId)
+            playerIds = [player.id]
+        }
         const playerId = playerIds[0]
         const player = !isNaN(playerId) ? getPlayerSync(playerId) : null
 

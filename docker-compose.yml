@@ -1,0 +1,30 @@
+services:
+  starpoint:
+    build: .
+    restart: unless-stopped
+    environment:
+      CDN_DIR: /app/.cdn
+      LISTEN_HOST: 0.0.0.0
+      LISTEN_PORT: 8000
+      STARPOINT_MULTI_HOST: ${STARPOINT_MULTI_HOST:-127.0.0.1}
+      STARPOINT_MULTI_PORT: 18888
+      STARPOINT_PUBLIC_HOST: ${STARPOINT_PUBLIC_HOST:-localhost:8000}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./.cdn:/app/.cdn
+      - ./.database:/app/.database
+      - ./.generated:/app/.generated
+
+  realtime:
+    build: .
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      STARPOINT_MULTI_PORT: 18888
+      STARPOINT_DUMMY_MULTI_SKIP_EARLY_BATTLE_START: "1"
+    command: ["node", "scripts/dummy-multi-server.js"]
+    ports:
+      - "18888:18888"
+    volumes:
+      - ./.logs:/app/.logs

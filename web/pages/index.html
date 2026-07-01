@@ -42,7 +42,15 @@
                 </svg>
                 Rooms
             </a>
-            <a href="https://github.com/Duosion/starpoint"
+            <a href="/items"
+                class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
+                    class="fill-on-surface">
+                    <path d="M160-200h640v-80H160v80Zm0-160h640v-80H160v80Zm0-160h640v-80H160v80Zm0-160h640v-80H160v80Z" />
+                </svg>
+                Items
+            </a>
+            <a href="/source"
                 class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
                     class="fill-on-surface">
@@ -55,14 +63,16 @@
         <article class="w-full flex flex-col gap-5">
             <form
                 class="flex flex-col items-center justify-center p-5 border border-outline-variant rounded-3xl w-full gap-5"
-                method="get" action="/api/server/time">
-                <h3 class="text-xl text-on-background font-semibold">Change the server's time to visit past and future content.</h3>
-                <h3 class="text-lg text-on-surface-variant">Time is in UTC, not your local time zone.</h3>
-                <input id="time" name="time" type="datetime-local" value="{{currentServerTime}}" class="bg-surface-container rounded-2xl border border-outline-variant p-3" required />
+                method="get" action="/api/server/gachaTime">
+                <h3 class="text-xl text-on-background font-semibold">Select the active gacha table.</h3>
+                <h3 class="text-lg text-on-surface-variant">Current server time: {{currentServerTime}} UTC</h3>
+                <select id="gacha_id" name="gacha_id" class="bg-surface-container rounded-2xl border border-outline-variant p-3 max-w-full" required>
+                    {{gachaOptions}}
+                </select>
                 <div class="flex gap-5 justify-center">
                     <button type="submit"
                         class="text-base bg-primary text-on-primary h-[40px] px-[24px] rounded-full flex items-center justify-center relative before:transition-opacity before:absolute before:w-full before:h-full before:left-0 before:top-0 before:rounded-full before:opacity-0 before:hover:bg-on-primary before:hover:opacity-[0.12] transition-opacity">
-                        Set Time
+                        Set Gacha Time
                     </button>
                     <a
                         href="/api/server/resetTime"

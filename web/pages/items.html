@@ -1,0 +1,88 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/public/tailwind.css">
+    <title>Starpoint - Items</title>
+</head>
+
+<body
+    class="bg-background text-on-surface relative mt-16 m-auto max-w-screen-2xl min-h-screen box-border flex flex-col items-start px-3 pb-3">
+    <header class="flex gap-3 items-center md:justify-start justify-center mb-3 w-full">
+        <img src="/public/img/logo.png" class="w-9 h-9">
+        <h1 class="text-4xl mt-4 font-black mb-4 text-on-background text-left">Starpoint</h1>
+    </header>
+    <div class="md:grid md:grid-cols-sidebar flex flex-col gap-5 w-full h-fit">
+        <nav class="px-3 py-5 gap-3 flex flex-col bg-surface-container-low rounded-3xl h-fit w-full">
+            <a href="/" class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">Dashboard</a>
+            <a href="/player" class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">Players</a>
+            <a href="/rooms" class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">Rooms</a>
+            <div class="px-5 py-3 flex gap-3 items-center bg-primary rounded-full w-full font-bold text-on-primary text-lg">Items</div>
+            <a href="/source" class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">Source Code</a>
+        </nav>
+        <main class="w-full flex flex-col gap-5">
+            <section class="w-full border border-outline-variant rounded-3xl p-5 bg-surface-container-lowest flex flex-col gap-5">
+                <header>
+                    <h2 class="text-2xl font-bold text-on-background">Item Management</h2>
+                    <p id="grant-status" class="text-on-surface-variant">Grant items directly to player inventories. Mail delivery is not implemented yet.</p>
+                </header>
+                <form id="grant-form" class="flex flex-col gap-5">
+                    <section class="flex flex-col gap-3">
+                        <div class="flex gap-3 flex-wrap">
+                            <label class="flex items-center gap-2 px-4 py-3 rounded-full border border-outline-variant bg-surface">
+                                <input type="radio" name="target" value="selected" checked>
+                                Selected players
+                            </label>
+                            <label class="flex items-center gap-2 px-4 py-3 rounded-full border border-outline-variant bg-surface">
+                                <input type="radio" name="target" value="all">
+                                All players
+                            </label>
+                        </div>
+                        <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-3">{{playerOptions}}</div>
+                    </section>
+                    <section class="grid md:grid-cols-[1fr_160px_auto] gap-3">
+                        <select name="item_id" class="bg-surface-container rounded-2xl border border-outline-variant p-3" required>
+                            {{itemOptions}}
+                        </select>
+                        <input name="amount" type="number" min="1" value="1"
+                            class="bg-surface-container rounded-2xl border border-outline-variant p-3" required>
+                        <button type="submit"
+                            class="px-5 py-3 rounded-full bg-primary text-on-primary font-bold hover:opacity-90 transition-opacity">
+                            Grant
+                        </button>
+                    </section>
+                </form>
+            </section>
+        </main>
+    </div>
+    <script>
+        document.getElementById("grant-form").addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const form = event.target;
+            const status = document.getElementById("grant-status");
+            const target = new FormData(form).get("target");
+            const playerIds = [...form.querySelectorAll("input[name='player_ids']:checked")].map((input) => input.value);
+            const payload = {
+                target,
+                player_ids: playerIds,
+                item_id: form.item_id.value,
+                amount: form.amount.value
+            };
+
+            const response = await fetch("/api/items/grant", {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            const body = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                status.textContent = body.message || "Failed to grant item.";
+                return;
+            }
+            status.textContent = `Granted item to ${body.result.length} player(s).`;
+        });
+    </script>
+</body>
+
+</html>

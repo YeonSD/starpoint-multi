@@ -2,6 +2,7 @@ import { FastifyInstance } from "fastify";
 import playerApiPlugin from "./player"
 import serverApiPlugin from "./server"
 import wireGuardApiPlugin from "./wireguard"
+import itemsApiPlugin from "./items"
 import { registerAdminAuth } from "../web/auth"
 
 const routes = async (fastify: FastifyInstance) => {
@@ -22,6 +23,7 @@ const routes = async (fastify: FastifyInstance) => {
     fastify.register(playerApiPlugin, { prefix: "/player" })
     fastify.register(serverApiPlugin, { prefix: "/server" })
     fastify.register(wireGuardApiPlugin, { prefix: "/wireguard" })
+    fastify.register(itemsApiPlugin, { prefix: "/items" })
 }
 
 export default routes;

@@ -1,0 +1,14 @@
+node_modules
+out
+.git
+.env
+.cdn
+.database
+.generated
+.logs
+.analysis
+.mitmproxy
+.mitmproxy-phone
+.claude
+.omx
+.tools

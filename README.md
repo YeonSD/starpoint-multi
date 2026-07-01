@@ -1,59 +1,78 @@
-# Starpoint
-A work-in-progress server emulator for the global version of a mobile pinball game.
+# Starpoint Multi
 
-## Implemented Features
-* Tutorial
-* Character leveling, uncapping, mana boards, & ex boosting
-* Character stories
-* Quests
-  - All main quests playable
-  - Some event/boss quests playable
-* Gacha
-  - Unit Portals
-  - Armament Portals
-  - Unit/Armament Exchanges
-* Armaments
-  - Awakening
-  - Melting
-* Most shops
-* Party organization
-* Encyclopedia
-* Time travel to past & future events.
+Self-hosted World Flipper server emulator based on the original [Starpoint](https://github.com/Duosion/starpoint), with experimental multiplayer restoration work.
 
-For a more in-depth view of the progress completed, visit the [API routes document](/docs/routes.md).
+## Run With Docker
 
-## Installation
-1. Install the latest version of [Node.js](https://nodejs.org/en/download/prebuilt-installer).
-2. Clone the repository from the command line.
-   ```
-   git clone https://github.com/Duosion/starpoint.git
-   ```
-   - If you do not have git installed, click the green "Code" button at the top of the page and select "Download ZIP" to download a ZIP of the repository instead.
-3. Navigate to the directory where the repository was cloned/unzipped to.
-4. Place your copy of the game's CDN into the Starpoint install directory.
-   - It should be named ``.cdn``.
-5. Install mitmproxy from their [downloads page](https://mitmproxy.org/downloads/#10.4.0) [[direct Windows download](https://downloads.mitmproxy.org/10.4.0/mitmproxy-10.4.0-windows-x86_64.zip)].
-   - Extract into the ``.mitmproxy`` folder within the Starpoint install directory.
-6. Follow the guide for your phone or emulator:
-   - [Android (No Root)](/docs/connecting-android.md)
-   - [Android (Root)](/docs/connecting-android-root.md)
-   - [iOS](/docs/connecting-ios.md)
+Requirements:
 
-## FAQ
-- **Do I have to host this on my own?**
-  - Yes. I will not be hosting this server myself.
-- **Can I import my save data?**
-  - Yes. Once you have Starpoint installed & running, visit [http://localhost:8000](http://localhost:8000) in your browser and navigate to the players page.
-  - Select a player from the page, select the save file you want to import, and click the "Upload Save" button.
-- **I am getting an 'H404' error**
-  - Receiving this error means that the feature you are trying to interact with has not been implemented yet.
+- Ubuntu server reachable from the devices that will connect
+- Docker and Docker Compose
+- Game CDN files
 
-## Mods
-Follow the [modding guide](/docs/modding.md) to learn more about installing & creating mods.
+Setup:
 
-## Contribution
-Interested in contributing to Starpoint? Read the [contribution guide](/docs/contributing.md) to learn more!
+```bash
+git clone https://github.com/YeonSD/starpoint-multi.git
+cd starpoint-multi
+mkdir -p .cdn .database .generated .logs
+```
 
-## Special Thanks
-- Special thanks to [wdfp-extractor](https://github.com/ScripterSugar/wdfp-extractor) for providing the assets and knowledge required to create the ``converter.py`` script.
-- Special thanks to the [wfax tool](https://github.com/blead/wfax) for making modding possible.
+Put the CDN data inside `.cdn`.
+
+Configure the realtime server address that game clients can reach:
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+For local LAN testing, set:
+
+```env
+STARPOINT_MULTI_HOST="YOUR_SERVER_LAN_IP"
+STARPOINT_PUBLIC_HOST="YOUR_SERVER_LAN_IP:8000"
+```
+
+Start:
+
+```bash
+docker compose up -d --build
+```
+
+Open the admin page:
+
+```text
+http://YOUR_SERVER_IP:8000
+```
+
+Default login:
+
+```text
+admin / admin
+```
+
+Change the password from the Dashboard before exposing the server.
+
+## Admin Pages
+
+- Dashboard: select the active gacha table, reset server time, change admin password
+- Players: view players, download/upload save JSON, create WireGuard client QR entries
+- Rooms: view active multiplayer rooms
+- Items: grant items directly to selected players or all players
+- Source Code: links to upstream Starpoint and this fork
+
+## Runtime Data
+
+These folders are local runtime state and are not committed:
+
+- `.cdn`: CDN files
+- `.database`: SQLite data, admin password hash, WireGuard registry
+- `.generated`: generated WireGuard config files
+- `.logs`: local HTTP/realtime logs
+
+## Current Networking Status
+
+The Docker stack currently runs the Starpoint HTTP server and the realtime multiplayer server.
+
+WireGuard and DNS replacement for the old mitmproxy workflow are the next deployment step. Until that is completed, QR creation in the Players page is a registry/config generator, not a full VPN server installer.

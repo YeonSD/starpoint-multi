@@ -5,7 +5,10 @@ import playerRoutePlugin from "./player"
 import { getServerDate } from "../../utils";
 import { registerAdminAuth } from "./auth";
 import roomsRoutePlugin from "./rooms";
+import itemsRoutePlugin from "./items";
+import sourceRoutePlugin from "./source";
 import { isDefaultAdminPasswordActive } from "../../lib/adminAuth";
+import { getGachaScheduleOptions } from "../../lib/gachaSchedule";
 
 export const staticPagesDir = "../../../web/pages"
 
@@ -14,10 +17,14 @@ const routes = async (fastify: FastifyInstance) => {
 
     fastify.get("/", async (_: FastifyRequest, reply: FastifyReply) => {
         const currentServerTime = getServerDate().toISOString().replace(/\.\d\d\dZ/, "")
+        const gachaOptions = getGachaScheduleOptions()
         let html = readFileSync(path.join(__dirname, staticPagesDir, "index.html")).toString("utf-8")
 
         // replace values
         html = html.replace("{{currentServerTime}}", currentServerTime)
+        html = html.replace("{{gachaOptions}}", gachaOptions.map((option) => `
+            <option value="${option.id}" ${option.id === "1" ? "selected" : ""}>${option.label}</option>
+        `).join(""))
         html = html.replace("{{adminPasswordNotice}}", isDefaultAdminPasswordActive()
             ? "Default admin password is active. Change it before exposing this server."
             : "Admin password has been changed.")
@@ -28,6 +35,8 @@ const routes = async (fastify: FastifyInstance) => {
 
     fastify.register(playerRoutePlugin, { prefix: "/player" })
     fastify.register(roomsRoutePlugin, { prefix: "/rooms" })
+    fastify.register(itemsRoutePlugin, { prefix: "/items" })
+    fastify.register(sourceRoutePlugin, { prefix: "/source" })
 }
 
 export default routes;

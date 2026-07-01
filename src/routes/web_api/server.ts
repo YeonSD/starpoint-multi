@@ -1,9 +1,14 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { setServerTime } from "../../utils";
 import { setAdminPassword, verifyAdminCredentials } from "../../lib/adminAuth";
+import { getGachaScheduleOption } from "../../lib/gachaSchedule";
 
 interface TimeQuery {
     time: string | undefined
+}
+
+interface GachaTimeQuery {
+    gacha_id: string | undefined
 }
 
 interface AdminPasswordBody {
@@ -48,6 +53,23 @@ const routes = async (fastify: FastifyInstance) => {
             })
         }
 
+        return reply.redirect(`/`);
+    })
+
+    fastify.get("/gachaTime", async (request: FastifyRequest, reply: FastifyReply) => {
+        const { gacha_id: gachaId } = request.query as GachaTimeQuery;
+        if (gachaId === undefined) return reply.status(400).send({
+            "error": "Bad Request",
+            "message": "Invalid query parameters."
+        });
+
+        const option = getGachaScheduleOption(gachaId);
+        if (option === null) return reply.status(404).send({
+            "error": "Not Found",
+            "message": "Gacha table not found."
+        });
+
+        setServerTime(new Date(`${option.serverTime}.000Z`));
         return reply.redirect(`/`);
     })
 

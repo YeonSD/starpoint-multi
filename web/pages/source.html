@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/public/tailwind.css">
+    <title>Starpoint - Source</title>
+</head>
+
+<body
+    class="bg-background text-on-surface relative mt-16 m-auto max-w-screen-2xl min-h-screen box-border flex flex-col items-start px-3 pb-3">
+    <header class="flex gap-3 items-center md:justify-start justify-center mb-3 w-full">
+        <img src="/public/img/logo.png" class="w-9 h-9">
+        <h1 class="text-4xl mt-4 font-black mb-4 text-on-background text-left">Starpoint</h1>
+    </header>
+    <div class="md:grid md:grid-cols-sidebar flex flex-col gap-5 w-full h-fit">
+        <nav class="px-3 py-5 gap-3 flex flex-col bg-surface-container-low rounded-3xl h-fit w-full">
+            <a href="/" class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">Dashboard</a>
+            <a href="/player" class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">Players</a>
+            <a href="/rooms" class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">Rooms</a>
+            <a href="/items" class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">Items</a>
+            <div class="px-5 py-3 flex gap-3 items-center bg-primary rounded-full w-full font-bold text-on-primary text-lg">Source Code</div>
+        </nav>
+        <main class="w-full flex flex-col gap-5">
+            <section class="w-full border border-outline-variant rounded-3xl p-5 bg-surface-container-lowest flex flex-col gap-5">
+                <h2 class="text-2xl font-bold text-on-background">Source Code</h2>
+                <p class="text-on-surface-variant">This project is a multiplayer-focused fork of the open source Starpoint server emulator.</p>
+                <div class="grid md:grid-cols-2 gap-4">
+                    <a href="https://github.com/Duosion/starpoint"
+                        class="border border-outline-variant rounded-2xl p-5 bg-surface hover:bg-surface-container-low transition-colors">
+                        <h3 class="text-xl font-bold text-on-background">Original Starpoint</h3>
+                        <p class="text-on-surface-variant mt-2">Upstream project by the original Starpoint developers.</p>
+                    </a>
+                    <a href="https://github.com/YeonSD/starpoint-multi"
+                        class="border border-outline-variant rounded-2xl p-5 bg-surface hover:bg-surface-container-low transition-colors">
+                        <h3 class="text-xl font-bold text-on-background">Starpoint Multi</h3>
+                        <p class="text-on-surface-variant mt-2">This fork for multiplayer restoration and self-hosted operation.</p>
+                    </a>
+                </div>
+            </section>
+        </main>
+    </div>
+</body>
+
+</html>

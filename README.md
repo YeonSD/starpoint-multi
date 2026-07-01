@@ -20,18 +20,18 @@ mkdir -p .cdn .database .generated .logs
 
 Put the CDN data inside `.cdn`.
 
-Configure the realtime server address that game clients can reach:
+Configure the public address used in WireGuard QR codes:
 
 ```bash
 cp .env.example .env
 nano .env
 ```
 
-For local LAN testing, set:
+Set these values:
 
 ```env
-STARPOINT_MULTI_HOST="YOUR_SERVER_LAN_IP"
-STARPOINT_PUBLIC_HOST="YOUR_SERVER_LAN_IP:8000"
+STARPOINT_PUBLIC_HOST="YOUR_SERVER_IP_OR_DOMAIN:8000"
+STARPOINT_WG_ENDPOINT_HOST="YOUR_SERVER_IP_OR_DOMAIN"
 ```
 
 Start:
@@ -54,6 +54,8 @@ admin / admin
 
 Change the password from the Dashboard before exposing the server.
 
+In the Players page, create one WireGuard QR per device. After the device enables that VPN profile, launch the game and use guest login. The new account appears in the Players list.
+
 ## Admin Pages
 
 - Dashboard: select the active gacha table, reset server time, change admin password
@@ -71,8 +73,13 @@ These folders are local runtime state and are not committed:
 - `.generated`: generated WireGuard config files
 - `.logs`: local HTTP/realtime logs
 
-## Current Networking Status
+## Networking
 
-The Docker stack currently runs the Starpoint HTTP server and the realtime multiplayer server.
+The Docker stack runs:
 
-WireGuard and DNS replacement for the old mitmproxy workflow are the next deployment step. Until that is completed, QR creation in the Players page is a registry/config generator, not a full VPN server installer.
+- Starpoint HTTP/admin server on port `8000`
+- realtime multiplayer server on `10.13.13.1:18888` inside WireGuard
+- WireGuard on UDP `51820`
+- DNS redirection for World Flipper domains through WireGuard
+
+Open inbound TCP `8000` and UDP `51820` on the host firewall/cloud security list.

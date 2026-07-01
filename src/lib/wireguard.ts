@@ -109,7 +109,8 @@ function getEndpoint(): string {
         ?? process.env.STARPOINT_MULTI_HOST
         ?? process.env.STARPOINT_PUBLIC_HOST
         ?? "127.0.0.1";
-    return process.env.STARPOINT_WG_ENDPOINT ?? `${host}:${getListenPort()}`;
+    const port = process.env.STARPOINT_WG_ENDPOINT_PORT ?? String(getListenPort());
+    return process.env.STARPOINT_WG_ENDPOINT ?? `${host}:${port}`;
 }
 
 function getListenPort(): number {
@@ -118,7 +119,11 @@ function getListenPort(): number {
 }
 
 function getAllowedIps(): string {
-    return process.env.STARPOINT_WG_ALLOWED_IPS ?? "0.0.0.0/0";
+    return process.env.STARPOINT_WG_ALLOWED_IPS ?? process.env.STARPOINT_WG_NETWORK ?? "10.13.13.0/24";
+}
+
+export function ensureWireGuardServerConfig(): string {
+    return getWireGuardServerConfigPath();
 }
 
 function sanitizeName(name: string): string {

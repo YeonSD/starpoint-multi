@@ -1,0 +1,213 @@
+import Fastify, { FastifyRequest } from "fastify";
+import { ContentTypeParserDoneFunction } from "fastify/types/content-type-parser";
+import fastifyStatic from "@fastify/static";
+import { unpack } from "msgpackr";
+import path from "path";
+import { packMessagePack } from "./lib/msgpack";
+import { dumpHttpFlow } from "./lib/httpDump";
+// api routes
+import apiPlugin from "./routes/api";
+import assetApiPlugin from "./routes/api/asset";
+import toolApiPlugin from "./routes/api/tool";
+import reproduceApiPlugin from "./routes/api/reproduce"
+import tutorialApiPlugin from "./routes/api/tutorial"
+import gachaApiPlugin from "./routes/api/gacha"
+import partyApiPlugin from "./routes/api/party"
+import expodApiPlugin from "./routes/api/expod"
+import storyQuestApiPlugin from "./routes/api/storyQuest"
+import optionApiPlugin from "./routes/api/option"
+import singleBattleQuestApiPlugin from "./routes/api/singleBattleQuest"
+import multiBattleQuestApiPlugin from "./routes/api/multiBattleQuest"
+import attentionApiPlugin from "./routes/api/attention"
+import characterApiPlugin from "./routes/api/character"
+import partyGroupApiPlugin from "./routes/api/partyGroup"
+import equipmentApiPlugin from "./routes/api/equipment"
+import exBoostApiPlugin from "./routes/api/exBoost"
+import boxGachaApiPlugin from "./routes/api/boxGacha"
+import shopApiPlugin from "./routes/api/shop"
+import encyclopediaApiPlugin from "./routes/api/encyclopedia"
+import mailApiPlugin from "./routes/api/mail"
+import rankingEventApiPlugin from "./routes/api/rankingEvent"
+import missionApiPlugin from "./routes/api/mission"
+import paymentApiPlugin from "./routes/api/payment"
+import newsApiPlugin from "./routes/api/news"
+import raidEventApiPlugin from "./routes/api/raidEvent"
+import rushEventApiPlugin from "./routes/api/rushEvent"
+// web routes
+import indexWebPlugin from "./routes/web"
+// web api routes
+import indexWebApiPlugin from "./routes/web_api"
+// misc routes
+import openapiPlugin from "./routes/openapi";
+import infodeskPlugin from "./routes/infodesk";
+
+// gc-openapi-zinny3.kakaogames.com
+// gc-infodesk-zinny3.kakaogames.com
+// na.wdfp.kakaogames.com
+
+// initialize server
+const fastify = Fastify({
+    logger: false
+})
+
+const debugRequests = process.env.STARPOINT_DEBUG === "1"
+const requestStartTimes = new WeakMap<FastifyRequest, number>()
+
+if (debugRequests) {
+    fastify.addHook("onRequest", (request, _, done) => {
+        requestStartTimes.set(request, Date.now())
+        console.log(`[starpoint] -> ${request.method} ${request.url} host=${request.headers.host ?? ""} content-type=${request.headers["content-type"] ?? ""}`)
+        done()
+    })
+
+    fastify.addHook("onResponse", (request, reply, done) => {
+        const startedAt = requestStartTimes.get(request)
+        const elapsed = startedAt === undefined ? "?" : `${Date.now() - startedAt}ms`
+        console.log(`[starpoint] <- ${reply.statusCode} ${request.method} ${request.url} ${elapsed}`)
+        done()
+    })
+}
+
+// serializers
+fastify.addHook('onSend', (request, reply, payload, done) => {
+    try {
+        dumpHttpFlow(request, reply, payload)
+    } catch (error) {
+        console.error("[starpoint] failed to dump HTTP flow", error)
+    }
+
+    const contentTypeHeader = reply.getHeader('content-type')
+    const contentType = Array.isArray(contentTypeHeader)
+        ? contentTypeHeader.join(";")
+        : String(contentTypeHeader ?? "")
+
+    if (!contentType.startsWith("application/x-msgpack")) {
+        done(null, payload)
+        return
+    }
+
+    try {
+        done(null, packMessagePack(payload).toString('base64'))
+    } catch (error) {
+        done(error as Error)
+    }
+
+})
+
+// content-type parsers
+function jsonParser(_: FastifyRequest, body: string, done: ContentTypeParserDoneFunction) {
+    try {
+        var json = JSON.parse(body)
+        done(null, json)
+    } catch (err) {
+        done(null, undefined)
+    }
+}
+
+fastify.addContentTypeParser("application/x-www-form-urlencoded", { parseAs: 'string' }, (request: FastifyRequest, body: string, done) => {
+    // on IOS, for some reason, requests to infodesk and openapi are JSON, but the content-type header is set as 'application/x-www-form-urlencoded'
+    const routeUrl = request.routeOptions.url || ''
+    if (routeUrl.startsWith("/openapi") || routeUrl.startsWith("/infodesk"))
+        return jsonParser(request, body, done);
+
+    try {
+        const unpacked = unpack(Buffer.from(body, "base64"))
+        done(null, unpacked)
+    } catch (err) {
+        done(err as Error, undefined)
+    }
+})
+fastify.addContentTypeParser('application/json', { parseAs: 'string' }, jsonParser)
+
+fastify.setNotFoundHandler((request, reply) => {
+    if (debugRequests) {
+        console.log(`[starpoint] !! 404 ${request.method} ${request.url} host=${request.headers.host ?? ""}`)
+    }
+
+    reply.status(404).send({
+        error: "Not Found",
+        message: `Route ${request.method}:${request.url} not found`
+    })
+})
+
+fastify.setErrorHandler((error, request, reply) => {
+    console.error(`[starpoint] !! ${request.method} ${request.url}`, error)
+
+    reply.status(error.statusCode ?? 500).send({
+        error: error.name,
+        message: error.message
+    })
+})
+
+// register plugins
+
+//api
+const apiPrefix = "/latest/api/index.php"
+fastify.register(apiPlugin, { prefix: apiPrefix })
+fastify.register(assetApiPlugin, { prefix: `${apiPrefix}/asset` })
+fastify.register(toolApiPlugin, { prefix: `${apiPrefix}/tool` })
+fastify.register(reproduceApiPlugin, { prefix: `${apiPrefix}/reproduce` })
+fastify.register(tutorialApiPlugin, { prefix: `${apiPrefix}/tutorial` })
+fastify.register(gachaApiPlugin, { prefix: `${apiPrefix}/gacha` })
+fastify.register(partyApiPlugin, { prefix: `${apiPrefix}/party` })
+fastify.register(expodApiPlugin, { prefix: `${apiPrefix}/expod` })
+fastify.register(storyQuestApiPlugin, { prefix: `${apiPrefix}/story_quest` })
+fastify.register(optionApiPlugin, { prefix: `${apiPrefix}/option` })
+fastify.register(singleBattleQuestApiPlugin, { prefix: `${apiPrefix}/single_battle_quest` })
+fastify.register(multiBattleQuestApiPlugin, { prefix: `${apiPrefix}/multi_battle_quest` })
+fastify.register(attentionApiPlugin, { prefix: `${apiPrefix}/attention` })
+fastify.register(characterApiPlugin, { prefix: `${apiPrefix}/character` })
+fastify.register(partyGroupApiPlugin, { prefix: `${apiPrefix}/party_group` })
+fastify.register(equipmentApiPlugin, { prefix: `${apiPrefix}/equipment` })
+fastify.register(exBoostApiPlugin, { prefix: `${apiPrefix}/ex_boost` })
+fastify.register(boxGachaApiPlugin, { prefix: `${apiPrefix}/box_gacha` })
+fastify.register(shopApiPlugin, { prefix: `${apiPrefix}/shop` })
+fastify.register(encyclopediaApiPlugin, { prefix: `${apiPrefix}/encyclopedia` })
+fastify.register(mailApiPlugin, { prefix: `${apiPrefix}/mail` })
+fastify.register(rankingEventApiPlugin, { prefix: `${apiPrefix}/ranking_event` })
+fastify.register(missionApiPlugin, { prefix: `${apiPrefix}/mission` })
+fastify.register(paymentApiPlugin, { prefix: `${apiPrefix}/payment` })
+fastify.register(newsApiPlugin, { prefix: `${apiPrefix}/news` })
+fastify.register(raidEventApiPlugin, { prefix: `${apiPrefix}/event/raid` })
+fastify.register(rushEventApiPlugin, { prefix: `${apiPrefix}/event/rush` })
+
+// openapi
+fastify.register(openapiPlugin, { prefix: "/openapi/service" })
+
+// infodesk
+fastify.register(infodeskPlugin, { prefix: "/infodesk" })
+
+// web routes
+fastify.register(indexWebPlugin, { prefix: "/" })
+
+// web api routes
+fastify.register(indexWebApiPlugin, { prefix: "/api" })
+
+// web static
+fastify.register(fastifyStatic, {
+    root: path.join(__dirname, "..", "web/public"),
+    prefix: "/public",
+    decorateReply: false
+})
+
+// static CDN
+const cdnDir = process.env.CDN_DIR || ".cdn"
+fastify.register(fastifyStatic, {
+    root: path.isAbsolute(cdnDir) ? cdnDir : path.join(__dirname, "..", process.env.CDN_DIR || ".cdn"),
+    prefix: "/patch/Live/2.0.0",
+    decorateReply: false
+})
+
+// listen
+const listenHost = process.env.LISTEN_HOST ?? "localhost"
+
+const envListenPort = process.env.LISTEN_PORT === undefined ? 8000 : Number.parseInt(process.env.LISTEN_PORT)
+const listenPort = isNaN(envListenPort) ? 8000 : envListenPort
+fastify.listen({ port: listenPort, host: listenHost }, (err, address) => {
+    if (err) {
+        console.error(err)
+        fastify.log.error(err)
+        process.exit(1)
+    }
+    console.log(`StarPoint is listening on http://${listenHost}:${listenPort}`)
+})

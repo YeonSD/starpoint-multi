@@ -156,8 +156,22 @@ const routes = async (fastify: FastifyInstance) => {
         let session = await getSession(clientZat)
         if (session === null) {
             const idpAlias = generateIdpAlias(body.appId, body.deviceId, body.os)
-            const account = getAccountFromIdpIdSync(body.whiteKey)
-            if (account && account.idpAlias === idpAlias) {
+            let account = getAccountFromIdpIdSync(body.whiteKey)
+            if (account === null) {
+                account = await insertAccount({
+                    appId: body.appId,
+                    idpAlias: idpAlias,
+                    idpCode: "zd3",
+                    idpId: body.whiteKey,
+                    status: "normal",
+                })
+            } else if (account.idpAlias !== idpAlias) {
+                account = await updateAccount({
+                    id: account.id,
+                    idpAlias: idpAlias
+                })
+            }
+            if (account) {
                 await deleteAccountSessionsOfType(account.id, SessionType.ZAT)
                 session = await insertSession({
                     expires: new Date(new Date().getTime() + 43200000),

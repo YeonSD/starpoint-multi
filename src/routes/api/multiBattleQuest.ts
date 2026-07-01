@@ -122,6 +122,12 @@ interface DebugRoomQuery {
     viewer_id?: string
 }
 
+interface RealtimeRoomEventBody {
+    event?: "leave" | "disband" | "empty",
+    room_number?: string,
+    viewer_id?: number
+}
+
 interface MultiRoom {
     roomNumber: string,
     viewerId: number,
@@ -139,6 +145,7 @@ interface MultiRoom {
 const rooms: Map<string, MultiRoom> = new Map()
 const roomsBySequence: Map<number, MultiRoom> = new Map()
 const roomsByViewer: Map<number, MultiRoom> = new Map()
+const internalToken = process.env.STARPOINT_INTERNAL_TOKEN ?? ""
 
 function generateRoomNumber(): string {
     let roomNumber = randomInt(0, 1000000).toString().padStart(6, "0")
@@ -208,6 +215,12 @@ function markRoomWaitingAfterBattle(room: MultiRoom): void {
     for (const viewerId of room.participants.keys()) {
         roomsByViewer.set(viewerId, room)
     }
+}
+
+function findRoomForRealtimeEvent(body: RealtimeRoomEventBody): MultiRoom | undefined {
+    if (body.room_number) return rooms.get(body.room_number)
+    if (body.viewer_id !== undefined) return roomsByViewer.get(body.viewer_id)
+    return undefined
 }
 
 function findRoomForBody(body: { viewer_id: number, room_number?: string, room_sequence?: number }): MultiRoom | undefined {
@@ -482,6 +495,42 @@ async function getPlayerIdForViewer(viewerId: number): Promise<number | undefine
 }
 
 const routes = async (fastify: FastifyInstance) => {
+    fastify.post("/internal_room_event", async (request: FastifyRequest, reply: FastifyReply) => {
+        const token = request.headers["x-starpoint-internal-token"]
+        if (internalToken === "" || token !== internalToken) {
+            return reply.status(403).send({
+                "error": "Forbidden",
+                "message": "Invalid internal token."
+            })
+        }
+
+        const body = request.body as RealtimeRoomEventBody
+        const room = findRoomForRealtimeEvent(body)
+        if (room === undefined) {
+            return reply.status(200).send({
+                "ok": true,
+                "found": false
+            })
+        }
+
+        if (body.event === "disband" || body.event === "empty") {
+            forgetRoom(room)
+        } else if (body.event === "leave" && body.viewer_id !== undefined) {
+            removeRoomParticipant(room, body.viewer_id)
+        } else {
+            return reply.status(400).send({
+                "error": "Bad Request",
+                "message": "Invalid room event."
+            })
+        }
+
+        return reply.status(200).send({
+            "ok": true,
+            "found": true,
+            "remaining": room.participants.size
+        })
+    })
+
     fastify.get("/debug_rooms", async (request: FastifyRequest, reply: FastifyReply) => {
         reply.header("content-type", "application/json; charset=utf-8")
         return reply.status(200).send({

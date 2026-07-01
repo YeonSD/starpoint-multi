@@ -13,6 +13,8 @@ const debugBattleConnectedAfterSceneReady = process.env.STARPOINT_DUMMY_MULTI_DE
 const wrapBattleSocketInputInSectionCommand = process.env.STARPOINT_DUMMY_MULTI_WRAP_BATTLE_SOCKET === "1";
 const skipEarlyBattleStart = process.env.STARPOINT_DUMMY_MULTI_SKIP_EARLY_BATTLE_START !== "0";
 const sendEarlyBattleConnected = process.env.STARPOINT_DUMMY_MULTI_EARLY_CONNECTED === "1";
+const starpointHttpBase = process.env.STARPOINT_HTTP_BASE || "http://127.0.0.1:8000";
+const internalToken = process.env.STARPOINT_INTERNAL_TOKEN || "";
 const logDir = path.join(process.cwd(), ".logs", "multi-realtime");
 fs.mkdirSync(logDir, { recursive: true });
 
@@ -72,6 +74,43 @@ function sendToOtherBattleClients(session, sender, value) {
 
 function getClientConnectionId(client) {
     return client.connectionId || client.roomState?.connectionId || "";
+}
+
+function getViewerIdFromRoomState(roomState) {
+    const direct = Number.parseInt(String(roomState?.viewerId || ""), 10);
+    if (Number.isFinite(direct) && direct > 0) return direct;
+
+    const connectionId = String(roomState?.connectionId || "");
+    const viewerPart = connectionId.split(":")[1] || "";
+    const parsed = Number.parseInt(viewerPart, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function notifyHttpRoomEvent(event, session, viewerId) {
+    if (!internalToken) {
+        log(`[http] internal_event_skipped_no_token event=${event} room=${session?.roomNumber || ""} viewer=${viewerId || ""}`);
+        return;
+    }
+
+    const body = {
+        event,
+        room_number: session?.roomNumber || "",
+        viewer_id: viewerId
+    };
+
+    fetch(`${starpointHttpBase}/latest/api/index.php/multi_battle_quest/internal_room_event`, {
+        method: "POST",
+        headers: {
+            "content-type": "application/json",
+            "x-starpoint-internal-token": internalToken
+        },
+        body: JSON.stringify(body)
+    }).then(async (response) => {
+        const text = await response.text().catch(() => "");
+        log(`[http] internal_event event=${event} room=${body.room_number} viewer=${viewerId || ""} status=${response.status} body=${text.slice(0, 200)}`);
+    }).catch((error) => {
+        log(`[http] internal_event_error event=${event} room=${body.room_number} viewer=${viewerId || ""} error=${error.message}`);
+    });
 }
 
 function broadcastMates(session) {
@@ -637,11 +676,20 @@ const tcpServer = net.createServer((socket) => {
                         if (roomState?.session && roomState.mateKey) {
                             const session = roomState.session;
                             if (session.battleStarted) {
+                                notifyHttpRoomEvent("leave", session, getViewerIdFromRoomState(roomState));
+                                session.mates.delete(roomState.mateKey);
+                                syncHostReadyState(session);
+                                broadcastMates(session);
+                                if (session.mates.size === 0) {
+                                    roomSessionsByNumber.delete(session.roomNumber || "");
+                                    resetBattleState(session);
+                                }
                                 log(`[tcp] lobby_bye_during_battle room=${session.roomNumber} connectionId=${roomState.connectionId}`);
                             } else if (session.returningFromBattle) {
                                 log(`[tcp] lobby_bye_ignored_after_battle room=${session.roomNumber} connectionId=${roomState.connectionId}`);
                             } else if (session.hostMateKey === roomState.mateKey) {
                                 sendToSession(session, disbanded(roomState.connectionId));
+                                notifyHttpRoomEvent("disband", session, getViewerIdFromRoomState(roomState));
                                 roomSessionsByNumber.delete(session.roomNumber || "");
                                 for (const client of session.sockets) {
                                     if (!client.socket.destroyed) client.socket.end();
@@ -650,6 +698,7 @@ const tcpServer = net.createServer((socket) => {
                                 session.mates.clear();
                                 log(`[tcp] room_disbanded room=${session.roomNumber} host=${roomState.connectionId}`);
                             } else {
+                                notifyHttpRoomEvent("leave", session, getViewerIdFromRoomState(roomState));
                                 session.mates.delete(roomState.mateKey);
                                 syncHostReadyState(session);
                                 broadcastMates(session);
@@ -736,11 +785,13 @@ const tcpServer = net.createServer((socket) => {
             if (roomState.mateKey && session.mates.has(roomState.mateKey)) {
                 if (session.hostMateKey === roomState.mateKey) {
                     sendToSession(session, disbanded(roomState.connectionId));
+                    notifyHttpRoomEvent("disband", session, getViewerIdFromRoomState(roomState));
                     roomSessionsByNumber.delete(session.roomNumber || "");
                     session.mates.clear();
                     session.sockets.clear();
                     log(`[tcp] room_disbanded_by_close room=${session.roomNumber} host=${roomState.connectionId}`);
                 } else {
+                    notifyHttpRoomEvent("leave", session, getViewerIdFromRoomState(roomState));
                     session.mates.delete(roomState.mateKey);
                     syncHostReadyState(session);
                     broadcastMates(session);

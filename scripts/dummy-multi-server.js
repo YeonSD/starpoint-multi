@@ -183,6 +183,7 @@ function resetBattleState(session) {
 function resetRoomAfterBattle(session) {
     resetBattleState(session);
     session.returningFromBattle = true;
+    session.returnPendingMates = new Set(session.mates.keys());
 
     for (const [mateKey, mate] of session.mates.entries()) {
         mate.state = [0];
@@ -219,6 +220,7 @@ function getOrCreateRoomSession(roomNumber, defaults = {}) {
         battleConnectedProbeSent: false,
         battleLoadingConnectedSent: false,
         returningFromBattle: false,
+        returnPendingMates: new Set(),
         mates: new Map(),
         sockets: new Set(),
         battleSockets: new Set()
@@ -238,6 +240,10 @@ function buildRoomPayload(session) {
         quest_category: session?.questCategory,
         category_id: session?.questCategory
     };
+}
+
+function isPendingBattleReturn(session, mateKey) {
+    return Boolean(session?.returningFromBattle && mateKey && session.returnPendingMates?.has(mateKey));
 }
 
 function message(serverMessage) {
@@ -666,6 +672,14 @@ const tcpServer = net.createServer((socket) => {
                             }
                             session.mates.set(roomState.mateKey, mate);
                         }
+                        if (isPendingBattleReturn(session, roomState.mateKey)) {
+                            session.returnPendingMates.delete(roomState.mateKey);
+                            log(`[tcp] room_return_mate room=${session.roomNumber} connectionId=${roomState.connectionId} pending=${session.returnPendingMates.size}`);
+                            if (session.returnPendingMates.size === 0) {
+                                session.returningFromBattle = false;
+                                log(`[tcp] room_return_complete room=${session.roomNumber}`);
+                            }
+                        }
                         roomsByViewer.set(roomState.viewerId, roomState);
                         if (roomState.roomNumber) roomsByNumber.set(roomState.roomNumber, roomState);
                         sendJson(socket, peer, welcome(buildRoomPayload(session), getSessionMateList(session)));
@@ -680,7 +694,7 @@ const tcpServer = net.createServer((socket) => {
                                 // into the battle socket. HTTP abort/finish handles real
                                 // battle exits; removing the mate here prevents BattleStart.
                                 log(`[tcp] lobby_bye_during_battle room=${session.roomNumber} connectionId=${roomState.connectionId}`);
-                            } else if (session.returningFromBattle) {
+                            } else if (isPendingBattleReturn(session, roomState.mateKey)) {
                                 log(`[tcp] lobby_bye_ignored_after_battle room=${session.roomNumber} connectionId=${roomState.connectionId}`);
                             } else if (session.hostMateKey === roomState.mateKey) {
                                 sendToSession(session, disbanded(roomState.connectionId));
@@ -733,6 +747,7 @@ const tcpServer = net.createServer((socket) => {
                             roomState.session.battleStarted = true;
                             roomState.session.battleStartSent = false;
                             roomState.session.returningFromBattle = false;
+                            roomState.session.returnPendingMates.clear();
                             sendToSession(roomState.session, startBattle(startPayload));
                             log(`[tcp] start_battle room=${roomState.session.roomNumber} host=${roomState.connectionId} mates=${startPayload.length}`);
                             maybeSendBattleLoadingConnected(roomState.session);
@@ -772,7 +787,7 @@ const tcpServer = net.createServer((socket) => {
                 log(`[tcp] close ${peer} error=${hadError}`);
                 return;
             }
-            if (session.returningFromBattle) {
+            if (isPendingBattleReturn(session, roomState.mateKey)) {
                 log(`[tcp] lobby_close_ignored_after_battle room=${session.roomNumber} connectionId=${roomState.connectionId}`);
                 log(`[tcp] close ${peer} error=${hadError}`);
                 return;

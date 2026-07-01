@@ -93,8 +93,6 @@ domain-needed
 bogus-priv
 address=/na.wdfp.kakaogames.com/${WG_SERVER_IP}
 address=/patch.wdfp.kakaogames.com/${WG_SERVER_IP}
-address=/gc-openapi-zinny3.kakaogames.com/${WG_SERVER_IP}
-address=/gc-infodesk-zinny3.kakaogames.com/${WG_SERVER_IP}
 EOF
 
 sysctl -w net.ipv4.ip_forward=1 >/dev/null || true

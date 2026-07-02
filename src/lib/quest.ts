@@ -47,14 +47,14 @@ export function givePlayerScoreRewardsSync(
                         case RewardType.ITEM: {
                             const itemReward = reward as ItemScoreReward
                             const itemId = itemReward.id
-                            rewardAmount = itemReward.count * 10 * (boostPointUsed ? 2 : 1)
+                            rewardAmount = itemReward.count * (boostPointUsed ? 2 : 1)
                             items[String(itemId)] = givePlayerItemSync(playerId, itemId, rewardAmount);
                             break;
                         }
                         case RewardType.MANA: {
                             const player = getPlayerSync(playerId)
                             const currencyReward = reward as CurrencyScoreReward
-                            rewardAmount = currencyReward.count * 10 * (boostPointUsed ? 2 : 1)
+                            rewardAmount = currencyReward.count * (boostPointUsed ? 2 : 1)
                             mana += rewardAmount
                             updatePlayerSync({
                                 id: playerId,
@@ -65,7 +65,7 @@ export function givePlayerScoreRewardsSync(
                         case RewardType.EXP: {
                             const player = getPlayerSync(playerId)
                             const currencyReward = reward as CurrencyScoreReward
-                            rewardAmount = currencyReward.count * 10 * (boostPointUsed ? 2 : 1)
+                            rewardAmount = currencyReward.count * (boostPointUsed ? 2 : 1)
                             expPool += rewardAmount
                             updatePlayerSync({
                                 id: playerId,

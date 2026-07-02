@@ -161,8 +161,6 @@ const routes = async (fastify: FastifyInstance) => {
         const questPreviouslyCompleted = questProgress !== null
         const questAccomplished = body.is_accomplished
 
-        const clearReward = !questPreviouslyCompleted && questData.clearReward !== undefined ? givePlayerRewardSync(playerId, questData.clearReward) : null
-        const sPlusClearReward = (clearRank === 5) && (questProgress?.clearRank !== 5) && (questData.sPlusReward !== undefined) ? givePlayerRewardSync(playerId, questData.sPlusReward) : null
         if (questAccomplished) {
             // update quest progress
             if (questPreviouslyCompleted) {
@@ -195,6 +193,9 @@ const routes = async (fastify: FastifyInstance) => {
             boostPoint: newBoostPoint,
             bossBoostPoint: newBossBoostPoint
         })
+
+        const clearReward = questAccomplished && !questPreviouslyCompleted && questData.clearReward !== undefined ? givePlayerRewardSync(playerId, questData.clearReward) : null
+        const sPlusClearReward = questAccomplished && (clearRank === 5) && (questProgress?.clearRank !== 5) && (questData.sPlusReward !== undefined) ? givePlayerRewardSync(playerId, questData.sPlusReward) : null
 
         // reward score rewards
         const scoreRewardsResult = givePlayerScoreRewardsSync(playerId, questData.scoreRewardGroupId, questData.scoreRewardGroup, useBoostPoint)
@@ -315,19 +316,20 @@ const routes = async (fastify: FastifyInstance) => {
                 }
             }
         }
+        const finalPlayerData = getPlayerSync(playerId) ?? playerData
 
         reply.header("content-type", "application/x-msgpack")
         return reply.status(200).send({
             "data_headers": dataHeaders,
             "data": {
                 "user_info": {
-                    "free_mana": newMana + (clearReward?.user_info.free_mana || 0) + (sPlusClearReward?.user_info.free_mana || 0) + scoreRewardsResult.user_info.free_mana,
-                    "exp_pool": rewardCharacterExpResult.exp_pool + (clearReward?.user_info.exp_pool || 0) + scoreRewardsResult.user_info.exp_pool,
-                    "exp_pooled_time": getServerTime(playerData.expPooledTime),
-                    "free_vmoney": playerData.freeVmoney + (clearReward?.user_info.free_vmoney || 0) + (sPlusClearReward?.user_info.free_vmoney || 0) + scoreRewardsResult.user_info.free_vmoney,
+                    "free_mana": finalPlayerData.freeMana,
+                    "exp_pool": finalPlayerData.expPool,
+                    "exp_pooled_time": getServerTime(finalPlayerData.expPooledTime),
+                    "free_vmoney": finalPlayerData.freeVmoney,
                     "rank_point": newRankPoint,
-                    "stamina": playerData.stamina,
-                    "stamina_heal_time": getServerTime(playerData.staminaHealTime),
+                    "stamina": finalPlayerData.stamina,
+                    "stamina_heal_time": getServerTime(finalPlayerData.staminaHealTime),
                     "boost_point": newBoostPoint,
                     "boss_boost_point": newBossBoostPoint
                 },

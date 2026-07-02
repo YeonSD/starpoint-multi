@@ -8,6 +8,7 @@ build/
 .env.local
 key/
 deployment/ssl/
+rootca.crt
 
 .cdn/
 .cn-cdn/
@@ -17,6 +18,9 @@ deployment/ssl/
 .analysis/
 .misc/
 .unzip-temp/
+.nox-apk/
+.nox-backup/
+nox-*.png
 
 .claude/
 .omx/

@@ -58,9 +58,9 @@ export function grantCurrencyToPlayers(
             };
         }
 
-        const total = currency === "free_vmoney"
+        const total = Math.max(0, currency === "free_vmoney"
             ? player.freeVmoney + amount
-            : player.freeMana + amount;
+            : player.freeMana + amount);
 
         updatePlayerSync(currency === "free_vmoney"
             ? { id: playerId, freeVmoney: total }

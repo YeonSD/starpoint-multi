@@ -89,9 +89,9 @@
                             <option value="free_vmoney">Lodestar Beads (free_vmoney)</option>
                             <option value="free_mana">Mana (free_mana)</option>
                         </select>
-                        <input name="amount" type="number" min="1" value="1"
+                        <input name="amount" type="number" value="" placeholder="Amount, e.g. 1000 or -1000"
                             class="bg-surface-container rounded-2xl border border-outline-variant p-3" required>
-                        <button type="submit"
+                        <button id="grant-submit" type="submit"
                             class="px-5 py-3 rounded-full bg-primary text-on-primary font-bold hover:opacity-90 transition-opacity">
                             Grant
                         </button>
@@ -150,6 +150,7 @@
             event.preventDefault();
             const form = event.target;
             const status = document.getElementById("grant-status");
+            const submit = document.getElementById("grant-submit");
             const target = new FormData(form).get("target");
             const playerIds = [...form.querySelectorAll("input[name='player_ids']:checked")].map((input) => input.value);
             const payload = {
@@ -159,17 +160,40 @@
                 amount: form.amount.value
             };
 
-            const response = await fetch("/api/items/grant", {
-                method: "POST",
-                headers: { "content-type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-            const body = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                status.textContent = body.message || "Failed to grant currency.";
-                return;
+            submit.disabled = true;
+            submit.textContent = "Granting...";
+            submit.classList.add("opacity-60", "cursor-not-allowed");
+            status.textContent = "Processing currency grant...";
+            status.className = "rounded-2xl border border-outline-variant bg-surface-container-low px-4 py-3 font-bold text-on-surface";
+
+            try {
+                const response = await fetch("/api/items/grant", {
+                    method: "POST",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                const body = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    status.textContent = body.message || "Failed to grant currency.";
+                    status.className = "rounded-2xl border border-red-500 bg-red-50 px-4 py-3 font-bold text-red-700";
+                    return;
+                }
+
+                const granted = body.result.filter((entry) => entry.skipped !== true).length;
+                status.textContent = `Grant complete. Updated ${granted} player(s).`;
+                status.className = "rounded-2xl border border-green-600 bg-green-50 px-4 py-3 font-bold text-green-700";
+                form.reset();
+                submit.textContent = "Granted";
+            } catch (error) {
+                status.textContent = "Failed to grant currency.";
+                status.className = "rounded-2xl border border-red-500 bg-red-50 px-4 py-3 font-bold text-red-700";
+            } finally {
+                setTimeout(() => {
+                    submit.disabled = false;
+                    submit.textContent = "Grant";
+                    submit.classList.remove("opacity-60", "cursor-not-allowed");
+                }, 1500);
             }
-            status.textContent = `Granted currency to ${body.result.length} player(s).`;
         });
 
         document.getElementById("schedule-form").addEventListener("submit", async (event) => {

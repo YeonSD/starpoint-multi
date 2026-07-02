@@ -48,10 +48,10 @@ const routes = async (fastify: FastifyInstance) => {
         const amount = Number(body?.amount);
         const currency = body?.currency;
 
-        if (playerIds.length === 0 || !isGrantCurrency(currency) || !Number.isInteger(amount) || amount <= 0) {
+        if (playerIds.length === 0 || !isGrantCurrency(currency) || !Number.isInteger(amount) || amount === 0) {
             return reply.status(400).send({
                 "error": "Bad Request",
-                "message": "Select at least one player, a supported currency, and a positive amount."
+                "message": "Select at least one player, a supported currency, and a non-zero amount."
             });
         }
 

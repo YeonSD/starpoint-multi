@@ -1,8 +1,12 @@
 import { randomInt } from "crypto"
 import { FastifyRequest } from "fastify"
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "fs"
+import path from "path"
 
 // The server's current date.
-let serverTime: Date | null = null;
+const databaseDir = path.join(process.cwd(), ".database");
+const serverTimePath = path.join(databaseDir, "server-time.json");
+let serverTime: Date | null = readPersistedServerTime();
 
 /**
  * Returns the current server time as a unix epoch.
@@ -31,6 +35,36 @@ export function setServerTime(date: Date | null) {
     }
 
     serverTime = date;
+    persistServerTime(date);
+}
+
+function readPersistedServerTime(): Date | null {
+    if (!existsSync(serverTimePath)) return null;
+
+    try {
+        const raw = JSON.parse(readFileSync(serverTimePath, "utf-8")) as unknown;
+        const value = typeof raw === "object" && raw !== null && "serverTime" in raw
+            ? (raw as { serverTime?: unknown }).serverTime
+            : raw;
+        if (typeof value !== "string") return null;
+
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? null : date;
+    } catch {
+        return null;
+    }
+}
+
+function persistServerTime(date: Date | null) {
+    if (date === null) {
+        if (existsSync(serverTimePath)) unlinkSync(serverTimePath);
+        return;
+    }
+
+    if (!existsSync(databaseDir)) mkdirSync(databaseDir, { recursive: true });
+    writeFileSync(serverTimePath, JSON.stringify({
+        serverTime: date.toISOString()
+    }, null, 2), "utf-8");
 }
 
 /**

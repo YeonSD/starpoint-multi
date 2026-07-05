@@ -32,7 +32,11 @@ Set these values:
 ```env
 STARPOINT_PUBLIC_HOST="YOUR_SERVER_IP_OR_DOMAIN:8000"
 STARPOINT_WG_ENDPOINT_HOST="YOUR_SERVER_IP_OR_DOMAIN"
+TZ="Asia/Seoul"
 ```
+
+`TZ` controls the local timezone shown in the admin dashboard and used by Live server time mode.
+The default is `Asia/Seoul`; change it only if you want to operate the server in another timezone.
 
 Start:
 
@@ -58,7 +62,7 @@ In the Players page, create one WireGuard QR per device. After the device enable
 
 ## Admin Pages
 
-- Dashboard: select the active gacha table, reset server time, change admin password
+- Dashboard: select the active gacha table, choose Fixed or Live server time, change admin password
 - Players: view players, download/upload save JSON, create WireGuard client QR entries
 - Rooms: view active multiplayer rooms
 - Items: grant free lodestar beads (`free_vmoney`) or mana (`free_mana`) to selected players or all players

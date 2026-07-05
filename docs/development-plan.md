@@ -15,16 +15,15 @@ Current status: server time was previously stored as one fixed timestamp. This i
 
 Target behavior:
 
-- `Real time`: use the host clock.
-- `Fixed time`: freeze the game server at a selected timestamp.
-- `Ticking offset`: start from a selected old timestamp and continue advancing with real elapsed time.
-- `Date override`: use an old calendar date while keeping the current real clock time.
+- `Fixed`: freeze the game server at a selected timestamp. This is the default because it is safest for gacha and tutorial compatibility.
+- `Live`: use the selected gacha table date with the current server clock time in the configured `TZ` timezone.
+- The saved time mode is a core server setting. Future stamina, daily mission, and mail timestamp behavior should branch on `fixed` versus `live`.
 
 Admin UI:
 
 - Show the current effective game server time.
 - Show the active time mode.
-- Allow selecting a gacha table and applying it as fixed, ticking, or date-only time.
+- Allow selecting a gacha table and applying it as Fixed or Live time.
 - Warn operators that time mode changes can affect gacha, stamina, missions, shops, and login state. Recommend maintenance and client reconnects.
 
 ## Phase 2: Item Catalog
@@ -123,4 +122,3 @@ Target behavior:
   - backup, update, and rollback
 - Include a clear non-commercial fan-project notice.
 - Keep update flow data-safe: `git pull` and `docker compose up -d --build` must not delete `.cdn`, `.database`, or `.generated`.
-

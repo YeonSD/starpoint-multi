@@ -83,8 +83,7 @@
                     </select>
                     <select id="time-mode-select" name="time_mode" class="bg-surface-container rounded-2xl border border-outline-variant p-3" required>
                         <option value="fixed" {{fixedSelected}}>Fixed</option>
-                        <option value="ticking" {{tickingSelected}}>Ticking</option>
-                        <option value="date_override" {{dateOverrideSelected}}>Date only</option>
+                        <option value="live" {{liveSelected}}>Live</option>
                     </select>
                 </section>
                 <p id="time-mode-description" class="max-w-3xl rounded-2xl border border-outline-variant bg-surface-container-low p-4 text-sm text-on-surface-variant"></p>
@@ -127,9 +126,8 @@
     </div>
     <script>
         const timeModeDescriptions = {
-            fixed: "Fixed: freeze time at the selected gacha table. This is safest when only gacha availability matters.",
-            ticking: "Ticking: start from the selected gacha table and advance with real elapsed time. Use this for stamina or mission systems.",
-            date_override: "Date only: use the selected table date with the current server clock time. This is usually the most natural live-server mode."
+            fixed: "Fixed: freeze time at the selected gacha table. This is safest for gacha or tutorial compatibility.",
+            live: "Live: use the selected gacha date with the current server clock time. Future stamina, daily mission, and mail timestamps should use this mode."
         };
 
         function updateTimeModeDescription() {

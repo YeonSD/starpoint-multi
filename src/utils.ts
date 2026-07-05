@@ -3,17 +3,16 @@ import { FastifyRequest } from "fastify"
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs"
 import path from "path"
 
-export type ServerTimeMode = "real" | "fixed" | "ticking" | "date_override";
+export type ServerTimeMode = "fixed" | "live";
 
 export interface ServerTimeSettings {
     mode: ServerTimeMode
     fixedTime?: string
-    baseServerTime?: string
-    baseRealTime?: string
-    overrideDate?: string
+    liveDate?: string
     updatedAt: string
 }
 
+const defaultFixedServerTime = "2021-07-24T15:00:00.000Z";
 const databaseDir = path.join(process.cwd(), ".database");
 const serverTimePath = path.join(databaseDir, "server-time.json");
 let serverTimeSettings: ServerTimeSettings = readPersistedServerTimeSettings();
@@ -40,29 +39,8 @@ export function getServerDate(date: Date = new Date()): Date {
         return readValidDate(serverTimeSettings.fixedTime) ?? new Date(date);
     }
 
-    if (serverTimeSettings.mode === "ticking"
-        && serverTimeSettings.baseServerTime !== undefined
-        && serverTimeSettings.baseRealTime !== undefined) {
-        const baseServerTime = readValidDate(serverTimeSettings.baseServerTime);
-        const baseRealTime = readValidDate(serverTimeSettings.baseRealTime);
-        if (baseServerTime !== null && baseRealTime !== null) {
-            return new Date(baseServerTime.getTime() + date.getTime() - baseRealTime.getTime());
-        }
-    }
-
-    if (serverTimeSettings.mode === "date_override" && serverTimeSettings.overrideDate !== undefined) {
-        const dateParts = /^(\d{4})-(\d\d)-(\d\d)$/.exec(serverTimeSettings.overrideDate);
-        if (dateParts !== null) {
-            return new Date(Date.UTC(
-                Number(dateParts[1]),
-                Number(dateParts[2]) - 1,
-                Number(dateParts[3]),
-                date.getUTCHours(),
-                date.getUTCMinutes(),
-                date.getUTCSeconds(),
-                date.getUTCMilliseconds()
-            ));
-        }
+    if (serverTimeSettings.mode === "live" && serverTimeSettings.liveDate !== undefined) {
+        return combineServerDateWithCurrentTime(serverTimeSettings.liveDate, date);
     }
 
     return new Date(date)
@@ -97,7 +75,7 @@ export function setServerTime(date: Date | null) {
     }
 
     if (date === null) {
-        setServerTimeSettings({ mode: "real" });
+        setServerTimeSettings({ mode: "fixed", fixedTime: defaultFixedServerTime });
         return;
     }
 
@@ -114,39 +92,25 @@ export function getServerTimeSettings(): ServerTimeSettings {
 export function setServerTimeSettings(input: {
     mode: ServerTimeMode,
     fixedTime?: string | Date,
-    baseServerTime?: string | Date,
-    overrideDate?: string
+    liveDate?: string
 }) {
     const now = new Date();
     let settings: ServerTimeSettings;
 
-    if (input.mode === "real") {
-        settings = {
-            mode: "real",
-            updatedAt: now.toISOString()
-        };
-    } else if (input.mode === "fixed") {
+    if (input.mode === "fixed") {
         const fixedTime = normalizeRequiredDate(input.fixedTime, "Invalid fixed server time.");
         settings = {
             mode: "fixed",
             fixedTime: fixedTime.toISOString(),
             updatedAt: now.toISOString()
         };
-    } else if (input.mode === "ticking") {
-        const baseServerTime = normalizeRequiredDate(input.baseServerTime ?? input.fixedTime, "Invalid ticking server time.");
-        settings = {
-            mode: "ticking",
-            baseServerTime: baseServerTime.toISOString(),
-            baseRealTime: now.toISOString(),
-            updatedAt: now.toISOString()
-        };
     } else {
-        if (input.overrideDate === undefined || !/^\d{4}-\d\d-\d\d$/.test(input.overrideDate)) {
-            throw new Error("Invalid override date.");
+        if (input.liveDate === undefined || !/^\d{4}-\d\d-\d\d$/.test(input.liveDate)) {
+            throw new Error("Invalid live server date.");
         }
         settings = {
-            mode: "date_override",
-            overrideDate: input.overrideDate,
+            mode: "live",
+            liveDate: input.liveDate,
             updatedAt: now.toISOString()
         };
     }
@@ -160,7 +124,8 @@ function readPersistedServerTimeSettings(): ServerTimeSettings {
 
     try {
         const raw = JSON.parse(readFileSync(serverTimePath, "utf-8")) as unknown;
-        if (isServerTimeSettings(raw)) return raw;
+        const migrated = migrateServerTimeSettings(raw);
+        if (migrated !== null) return migrated;
 
         const value = typeof raw === "object" && raw !== null && "serverTime" in raw
             ? (raw as { serverTime?: unknown }).serverTime
@@ -187,7 +152,8 @@ function persistServerTimeSettings(settings: ServerTimeSettings) {
 
 function defaultServerTimeSettings(): ServerTimeSettings {
     return {
-        mode: "real",
+        mode: "fixed",
+        fixedTime: defaultFixedServerTime,
         updatedAt: new Date().toISOString()
     };
 }
@@ -206,20 +172,126 @@ function readValidDate(value: string): Date | null {
     return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function isServerTimeSettings(value: unknown): value is ServerTimeSettings {
-    if (typeof value !== "object" || value === null) return false;
-    const settings = value as Partial<ServerTimeSettings>;
-    if (settings.mode === "real") return typeof settings.updatedAt === "string";
-    if (settings.mode === "fixed") return typeof settings.fixedTime === "string" && typeof settings.updatedAt === "string";
-    if (settings.mode === "ticking") {
-        return typeof settings.baseServerTime === "string"
-            && typeof settings.baseRealTime === "string"
-            && typeof settings.updatedAt === "string";
+function migrateServerTimeSettings(value: unknown): ServerTimeSettings | null {
+    if (typeof value !== "object" || value === null) return null;
+    const settings = value as Omit<Partial<ServerTimeSettings>, "mode"> & {
+        mode?: string,
+        baseServerTime?: string,
+        overrideDate?: string
+    };
+
+    if (settings.mode === "fixed" && typeof settings.fixedTime === "string" && typeof settings.updatedAt === "string") {
+        return {
+            mode: "fixed",
+            fixedTime: settings.fixedTime,
+            updatedAt: settings.updatedAt
+        };
     }
-    if (settings.mode === "date_override") {
-        return typeof settings.overrideDate === "string" && typeof settings.updatedAt === "string";
+
+    if (settings.mode === "live" && typeof settings.liveDate === "string" && typeof settings.updatedAt === "string") {
+        return {
+            mode: "live",
+            liveDate: settings.liveDate,
+            updatedAt: settings.updatedAt
+        };
     }
-    return false;
+
+    if (settings.mode === "date_override" && typeof settings.overrideDate === "string") {
+        return {
+            mode: "live",
+            liveDate: settings.overrideDate,
+            updatedAt: typeof settings.updatedAt === "string" ? settings.updatedAt : new Date().toISOString()
+        };
+    }
+
+    if (settings.mode === "ticking" && typeof settings.baseServerTime === "string") {
+        const baseServerTime = readValidDate(settings.baseServerTime);
+        if (baseServerTime !== null) {
+            return {
+                mode: "live",
+                liveDate: baseServerTime.toISOString().slice(0, 10),
+                updatedAt: typeof settings.updatedAt === "string" ? settings.updatedAt : new Date().toISOString()
+            };
+        }
+    }
+
+    return null;
+}
+
+function combineServerDateWithCurrentTime(liveDate: string, date: Date): Date {
+    const dateParts = /^(\d{4})-(\d\d)-(\d\d)$/.exec(liveDate);
+    if (dateParts === null) return new Date(date);
+
+    const timeParts = getTimePartsForTimeZone(date);
+    const offsetMinutes = getTimeZoneOffsetMinutes(liveDate, timeParts, getServerTimeZone());
+    return new Date(Date.UTC(
+        Number(dateParts[1]),
+        Number(dateParts[2]) - 1,
+        Number(dateParts[3]),
+        timeParts.hour,
+        timeParts.minute,
+        timeParts.second,
+        timeParts.millisecond
+    ) - offsetMinutes * 60_000);
+}
+
+function getTimePartsForTimeZone(date: Date): {
+    hour: number,
+    minute: number,
+    second: number,
+    millisecond: number
+} {
+    const timeZone = getServerTimeZone();
+    const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone,
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false
+    }).formatToParts(date).reduce<Record<string, string>>((result, part) => {
+        result[part.type] = part.value;
+        return result;
+    }, {});
+
+    return {
+        hour: Number(parts.hour),
+        minute: Number(parts.minute),
+        second: Number(parts.second),
+        millisecond: date.getMilliseconds()
+    };
+}
+
+function getTimeZoneOffsetMinutes(
+    localDate: string,
+    localTime: { hour: number, minute: number, second: number, millisecond: number },
+    timeZone: string
+): number {
+    const utcGuess = new Date(`${localDate}T${String(localTime.hour).padStart(2, "0")}:${String(localTime.minute).padStart(2, "0")}:${String(localTime.second).padStart(2, "0")}.000Z`);
+    const zonedParts = new Intl.DateTimeFormat("en-CA", {
+        timeZone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false
+    }).formatToParts(utcGuess).reduce<Record<string, string>>((result, part) => {
+        result[part.type] = part.value;
+        return result;
+    }, {});
+
+    const zonedAsUtc = Date.UTC(
+        Number(zonedParts.year),
+        Number(zonedParts.month) - 1,
+        Number(zonedParts.day),
+        Number(zonedParts.hour),
+        Number(zonedParts.minute),
+        Number(zonedParts.second),
+        localTime.millisecond
+    );
+
+    return Math.round((zonedAsUtc - utcGuess.getTime()) / 60_000);
 }
 
 /**

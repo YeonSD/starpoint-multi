@@ -86,15 +86,10 @@ const routes = async (fastify: FastifyInstance) => {
                 mode: "fixed",
                 fixedTime: serverTime
             });
-        } else if (selectedMode === "ticking") {
-            setServerTimeSettings({
-                mode: "ticking",
-                baseServerTime: serverTime
-            });
         } else {
             setServerTimeSettings({
-                mode: "date_override",
-                overrideDate: option.serverTime.slice(0, 10)
+                mode: "live",
+                liveDate: option.serverTime.slice(0, 10)
             });
         }
         return reply.redirect(`/`);
@@ -135,8 +130,8 @@ const routes = async (fastify: FastifyInstance) => {
     })
 }
 
-function normalizeGachaTimeMode(value: string | undefined): Extract<ServerTimeMode, "fixed" | "ticking" | "date_override"> {
-    if (value === "ticking" || value === "date_override") return value;
+function normalizeGachaTimeMode(value: string | undefined): ServerTimeMode {
+    if (value === "live" || value === "date_override" || value === "ticking") return "live";
     return "fixed";
 }
 

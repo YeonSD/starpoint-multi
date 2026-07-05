@@ -27,8 +27,7 @@ const routes = async (fastify: FastifyInstance) => {
         html = html.replace("{{serverTimeZone}}", getServerTimeZone())
         html = html.replace("{{serverTimeMode}}", serverTimeSettings.mode)
         html = html.replace("{{fixedSelected}}", serverTimeSettings.mode === "fixed" ? "selected" : "")
-        html = html.replace("{{tickingSelected}}", serverTimeSettings.mode === "ticking" ? "selected" : "")
-        html = html.replace("{{dateOverrideSelected}}", serverTimeSettings.mode === "date_override" ? "selected" : "")
+        html = html.replace("{{liveSelected}}", serverTimeSettings.mode === "live" ? "selected" : "")
         html = html.replace("{{gachaOptions}}", gachaOptions.map((option) => `
             <option value="${option.id}" ${option.id === "1" ? "selected" : ""}>${option.label}</option>
         `).join(""))

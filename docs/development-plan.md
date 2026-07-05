@@ -122,3 +122,33 @@ Target behavior:
   - backup, update, and rollback
 - Include a clear non-commercial fan-project notice.
 - Keep update flow data-safe: `git pull` and `docker compose up -d --build` must not delete `.cdn`, `.database`, or `.generated`.
+
+## Later Phase: Multiplayer Bot Fill
+
+Priority: low. This is a convenience feature after the core multiplayer, reward, mail, stamina, and distribution work is stable.
+
+Observed clue:
+
+- In current multiplayer tests, when a real player disconnects during battle, the remaining client can continue with the disconnected party moving like a bot.
+- This suggests that the client already has some fallback behavior for disconnected multiplayer parties.
+- The original live game also appeared to fill a room with bot-controlled parties after a matchmaking timeout.
+
+Open question:
+
+- The bot fill may have been initiated by the real multiplayer server after a room timeout.
+- Alternatively, the server may only have sent a specific timeout/disconnect/fallback message and the client performed the bot behavior locally.
+- We should not implement server-side AI until this distinction is proven.
+
+Recommended future experiment:
+
+- Reintroduce a controlled room matchmaking timeout in a debug branch.
+- Add a fake participant to an underfilled room after the timeout.
+- Start battle, then either never connect that fake participant or immediately broadcast the same disconnect/bye pattern observed from a real dropped player.
+- Check whether the remaining client turns that party into a local bot without server-side movement packets.
+
+Potential implementation path:
+
+- Admin setting: bot fill on/off.
+- Admin setting: timeout duration before bot fill.
+- Bot party presets selected from safe built-in party data.
+- Prefer triggering the client fallback AI over writing a new realtime bot AI on the server.

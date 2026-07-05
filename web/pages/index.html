@@ -65,10 +65,38 @@
                 class="flex flex-col items-center justify-center p-5 border border-outline-variant rounded-3xl w-full gap-5"
                 method="get" action="/api/server/gachaTime">
                 <h3 class="text-xl text-on-background font-semibold">Select the active gacha table.</h3>
-                <h3 class="text-lg text-on-surface-variant">Current server time: {{currentServerTime}} UTC</h3>
+                <div class="text-center">
+                    <h3 class="text-lg text-on-surface-variant">Current server time:
+                        <span id="server-time" class="font-bold text-on-surface">{{currentServerTime}}</span> UTC
+                    </h3>
+                    <p class="text-sm text-on-surface-variant">Mode:
+                        <span id="server-time-mode" class="font-bold">{{serverTimeMode}}</span>
+                    </p>
+                </div>
                 <select id="gacha_id" name="gacha_id" class="bg-surface-container rounded-2xl border border-outline-variant p-3 max-w-full" required>
                     {{gachaOptions}}
                 </select>
+                <section class="w-full max-w-3xl grid md:grid-cols-3 gap-3">
+                    <label class="flex flex-col gap-2 rounded-2xl border border-outline-variant bg-surface p-4">
+                        <span class="font-bold">Fixed</span>
+                        <span class="text-sm text-on-surface-variant">Freeze time at the selected gacha table. Safest for gacha-only testing.</span>
+                        <input type="radio" name="time_mode" value="fixed" checked>
+                    </label>
+                    <label class="flex flex-col gap-2 rounded-2xl border border-outline-variant bg-surface p-4">
+                        <span class="font-bold">Ticking</span>
+                        <span class="text-sm text-on-surface-variant">Start from the selected table and advance with real elapsed time.</span>
+                        <input type="radio" name="time_mode" value="ticking">
+                    </label>
+                    <label class="flex flex-col gap-2 rounded-2xl border border-outline-variant bg-surface p-4">
+                        <span class="font-bold">Date only</span>
+                        <span class="text-sm text-on-surface-variant">Use the selected table date with the current real UTC clock time.</span>
+                        <input type="radio" name="time_mode" value="date_override">
+                    </label>
+                </section>
+                <p class="max-w-3xl rounded-2xl border border-outline-variant bg-surface-container-low p-4 text-sm text-on-surface-variant">
+                    Changing server time can affect gacha availability, stamina recovery, missions, shops, and login state.
+                    For live servers, announce maintenance and ask players to reconnect after changing this setting.
+                </p>
                 <div class="flex gap-5 justify-center">
                     <button type="submit"
                         class="text-base bg-primary text-on-primary h-[40px] px-[24px] rounded-full flex items-center justify-center relative before:transition-opacity before:absolute before:w-full before:h-full before:left-0 before:top-0 before:rounded-full before:opacity-0 before:hover:bg-on-primary before:hover:opacity-[0.12] transition-opacity">
@@ -103,6 +131,17 @@
         </article>
     </div>
     <script>
+        async function refreshServerTime() {
+            const response = await fetch("/api/server/timeState");
+            if (!response.ok) return;
+            const body = await response.json();
+            if (!body.ok) return;
+            document.getElementById("server-time").textContent = body.server_time.replace(/\.\d\d\dZ$/, "");
+            document.getElementById("server-time-mode").textContent = body.settings.mode;
+        }
+
+        setInterval(refreshServerTime, 1000);
+
         document.getElementById("admin-password-form").addEventListener("submit", async (event) => {
             event.preventDefault();
             const status = document.getElementById("admin-password-status");

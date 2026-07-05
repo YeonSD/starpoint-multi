@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { setServerTime } from "../../utils";
+import { getServerDate, getServerTimeSettings, ServerTimeMode, setServerTime, setServerTimeSettings } from "../../utils";
 import { setAdminPassword, verifyAdminCredentials } from "../../lib/adminAuth";
 import { getGachaScheduleOption } from "../../lib/gachaSchedule";
 
@@ -9,6 +9,7 @@ interface TimeQuery {
 
 interface GachaTimeQuery {
     gacha_id: string | undefined
+    time_mode?: string
 }
 
 interface AdminPasswordBody {
@@ -18,6 +19,13 @@ interface AdminPasswordBody {
 }
 
 const routes = async (fastify: FastifyInstance) => {
+    fastify.get("/timeState", async () => {
+        return {
+            ok: true,
+            server_time: getServerDate().toISOString(),
+            settings: getServerTimeSettings()
+        };
+    })
 
     fastify.get("/resetTime", async (request: FastifyRequest, reply: FastifyReply) => {
         try {
@@ -57,7 +65,7 @@ const routes = async (fastify: FastifyInstance) => {
     })
 
     fastify.get("/gachaTime", async (request: FastifyRequest, reply: FastifyReply) => {
-        const { gacha_id: gachaId } = request.query as GachaTimeQuery;
+        const { gacha_id: gachaId, time_mode: timeMode } = request.query as GachaTimeQuery;
         if (gachaId === undefined) return reply.status(400).send({
             "error": "Bad Request",
             "message": "Invalid query parameters."
@@ -69,7 +77,24 @@ const routes = async (fastify: FastifyInstance) => {
             "message": "Gacha table not found."
         });
 
-        setServerTime(new Date(`${option.serverTime}.000Z`));
+        const selectedMode = normalizeGachaTimeMode(timeMode);
+        const serverTime = new Date(`${option.serverTime}.000Z`);
+        if (selectedMode === "fixed") {
+            setServerTimeSettings({
+                mode: "fixed",
+                fixedTime: serverTime
+            });
+        } else if (selectedMode === "ticking") {
+            setServerTimeSettings({
+                mode: "ticking",
+                baseServerTime: serverTime
+            });
+        } else {
+            setServerTimeSettings({
+                mode: "date_override",
+                overrideDate: option.serverTime.slice(0, 10)
+            });
+        }
         return reply.redirect(`/`);
     })
 
@@ -106,6 +131,11 @@ const routes = async (fastify: FastifyInstance) => {
             "ok": true
         });
     })
+}
+
+function normalizeGachaTimeMode(value: string | undefined): Extract<ServerTimeMode, "fixed" | "ticking" | "date_override"> {
+    if (value === "ticking" || value === "date_override") return value;
+    return "fixed";
 }
 
 export default routes;

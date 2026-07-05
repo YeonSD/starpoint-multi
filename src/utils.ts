@@ -1,12 +1,22 @@
 import { randomInt } from "crypto"
 import { FastifyRequest } from "fastify"
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "fs"
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs"
 import path from "path"
 
-// The server's current date.
+export type ServerTimeMode = "real" | "fixed" | "ticking" | "date_override";
+
+export interface ServerTimeSettings {
+    mode: ServerTimeMode
+    fixedTime?: string
+    baseServerTime?: string
+    baseRealTime?: string
+    overrideDate?: string
+    updatedAt: string
+}
+
 const databaseDir = path.join(process.cwd(), ".database");
 const serverTimePath = path.join(databaseDir, "server-time.json");
-let serverTime: Date | null = readPersistedServerTime();
+let serverTimeSettings: ServerTimeSettings = readPersistedServerTimeSettings();
 
 /**
  * Returns the current server time as a unix epoch.
@@ -17,7 +27,7 @@ let serverTime: Date | null = readPersistedServerTime();
 export function getServerTime(
     date: Date = new Date()
 ): number {
-    return Math.floor((serverTime ?? date).getTime() / 1000) //1710116388//
+    return Math.floor(getServerDate(date).getTime() / 1000) //1710116388//
 }
 
 /**
@@ -25,8 +35,37 @@ export function getServerTime(
  * 
  * @returns The current server time as a date.
  */
-export function getServerDate(): Date {
-    return serverTime ?? new Date()
+export function getServerDate(date: Date = new Date()): Date {
+    if (serverTimeSettings.mode === "fixed" && serverTimeSettings.fixedTime !== undefined) {
+        return readValidDate(serverTimeSettings.fixedTime) ?? new Date(date);
+    }
+
+    if (serverTimeSettings.mode === "ticking"
+        && serverTimeSettings.baseServerTime !== undefined
+        && serverTimeSettings.baseRealTime !== undefined) {
+        const baseServerTime = readValidDate(serverTimeSettings.baseServerTime);
+        const baseRealTime = readValidDate(serverTimeSettings.baseRealTime);
+        if (baseServerTime !== null && baseRealTime !== null) {
+            return new Date(baseServerTime.getTime() + date.getTime() - baseRealTime.getTime());
+        }
+    }
+
+    if (serverTimeSettings.mode === "date_override" && serverTimeSettings.overrideDate !== undefined) {
+        const dateParts = /^(\d{4})-(\d\d)-(\d\d)$/.exec(serverTimeSettings.overrideDate);
+        if (dateParts !== null) {
+            return new Date(Date.UTC(
+                Number(dateParts[1]),
+                Number(dateParts[2]) - 1,
+                Number(dateParts[3]),
+                date.getUTCHours(),
+                date.getUTCMinutes(),
+                date.getUTCSeconds(),
+                date.getUTCMilliseconds()
+            ));
+        }
+    }
+
+    return new Date(date)
 }
 
 export function setServerTime(date: Date | null) {
@@ -34,37 +73,130 @@ export function setServerTime(date: Date | null) {
         throw new Error("Invalid server time.");
     }
 
-    serverTime = date;
-    persistServerTime(date);
-}
-
-function readPersistedServerTime(): Date | null {
-    if (!existsSync(serverTimePath)) return null;
-
-    try {
-        const raw = JSON.parse(readFileSync(serverTimePath, "utf-8")) as unknown;
-        const value = typeof raw === "object" && raw !== null && "serverTime" in raw
-            ? (raw as { serverTime?: unknown }).serverTime
-            : raw;
-        if (typeof value !== "string") return null;
-
-        const date = new Date(value);
-        return Number.isNaN(date.getTime()) ? null : date;
-    } catch {
-        return null;
-    }
-}
-
-function persistServerTime(date: Date | null) {
     if (date === null) {
-        if (existsSync(serverTimePath)) unlinkSync(serverTimePath);
+        setServerTimeSettings({ mode: "real" });
         return;
     }
 
+    setServerTimeSettings({
+        mode: "fixed",
+        fixedTime: date
+    });
+}
+
+export function getServerTimeSettings(): ServerTimeSettings {
+    return { ...serverTimeSettings };
+}
+
+export function setServerTimeSettings(input: {
+    mode: ServerTimeMode,
+    fixedTime?: string | Date,
+    baseServerTime?: string | Date,
+    overrideDate?: string
+}) {
+    const now = new Date();
+    let settings: ServerTimeSettings;
+
+    if (input.mode === "real") {
+        settings = {
+            mode: "real",
+            updatedAt: now.toISOString()
+        };
+    } else if (input.mode === "fixed") {
+        const fixedTime = normalizeRequiredDate(input.fixedTime, "Invalid fixed server time.");
+        settings = {
+            mode: "fixed",
+            fixedTime: fixedTime.toISOString(),
+            updatedAt: now.toISOString()
+        };
+    } else if (input.mode === "ticking") {
+        const baseServerTime = normalizeRequiredDate(input.baseServerTime ?? input.fixedTime, "Invalid ticking server time.");
+        settings = {
+            mode: "ticking",
+            baseServerTime: baseServerTime.toISOString(),
+            baseRealTime: now.toISOString(),
+            updatedAt: now.toISOString()
+        };
+    } else {
+        if (input.overrideDate === undefined || !/^\d{4}-\d\d-\d\d$/.test(input.overrideDate)) {
+            throw new Error("Invalid override date.");
+        }
+        settings = {
+            mode: "date_override",
+            overrideDate: input.overrideDate,
+            updatedAt: now.toISOString()
+        };
+    }
+
+    serverTimeSettings = settings;
+    persistServerTimeSettings(settings);
+}
+
+function readPersistedServerTimeSettings(): ServerTimeSettings {
+    if (!existsSync(serverTimePath)) return defaultServerTimeSettings();
+
+    try {
+        const raw = JSON.parse(readFileSync(serverTimePath, "utf-8")) as unknown;
+        if (isServerTimeSettings(raw)) return raw;
+
+        const value = typeof raw === "object" && raw !== null && "serverTime" in raw
+            ? (raw as { serverTime?: unknown }).serverTime
+            : raw;
+        if (typeof value !== "string") return defaultServerTimeSettings();
+
+        const date = new Date(value);
+        return Number.isNaN(date.getTime())
+            ? defaultServerTimeSettings()
+            : {
+                mode: "fixed",
+                fixedTime: date.toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+    } catch {
+        return defaultServerTimeSettings();
+    }
+}
+
+function persistServerTimeSettings(settings: ServerTimeSettings) {
     if (!existsSync(databaseDir)) mkdirSync(databaseDir, { recursive: true });
-    writeFileSync(serverTimePath, JSON.stringify({
-        serverTime: date.toISOString()
-    }, null, 2), "utf-8");
+    writeFileSync(serverTimePath, JSON.stringify(settings, null, 2), "utf-8");
+}
+
+function defaultServerTimeSettings(): ServerTimeSettings {
+    return {
+        mode: "real",
+        updatedAt: new Date().toISOString()
+    };
+}
+
+function normalizeRequiredDate(value: string | Date | undefined, errorMessage: string): Date {
+    const date = value instanceof Date ? value : typeof value === "string" ? new Date(value) : null;
+    if (date === null || Number.isNaN(date.getTime())) {
+        throw new Error(errorMessage);
+    }
+
+    return date;
+}
+
+function readValidDate(value: string): Date | null {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function isServerTimeSettings(value: unknown): value is ServerTimeSettings {
+    if (typeof value !== "object" || value === null) return false;
+    const settings = value as Partial<ServerTimeSettings>;
+    if (settings.mode === "real") return typeof settings.updatedAt === "string";
+    if (settings.mode === "fixed") return typeof settings.fixedTime === "string" && typeof settings.updatedAt === "string";
+    if (settings.mode === "ticking") {
+        return typeof settings.baseServerTime === "string"
+            && typeof settings.baseRealTime === "string"
+            && typeof settings.updatedAt === "string";
+    }
+    if (settings.mode === "date_override") {
+        return typeof settings.overrideDate === "string" && typeof settings.updatedAt === "string";
+    }
+    return false;
 }
 
 /**

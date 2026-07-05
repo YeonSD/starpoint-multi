@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { readFileSync } from "fs";
 import path from "path";
 import playerRoutePlugin from "./player"
-import { getServerDate } from "../../utils";
+import { getServerDate, getServerTimeSettings } from "../../utils";
 import { registerAdminAuth } from "./auth";
 import roomsRoutePlugin from "./rooms";
 import itemsRoutePlugin from "./items";
@@ -17,11 +17,13 @@ const routes = async (fastify: FastifyInstance) => {
 
     fastify.get("/", async (_: FastifyRequest, reply: FastifyReply) => {
         const currentServerTime = getServerDate().toISOString().replace(/\.\d\d\dZ/, "")
+        const serverTimeSettings = getServerTimeSettings()
         const gachaOptions = getGachaScheduleOptions()
         let html = readFileSync(path.join(__dirname, staticPagesDir, "index.html")).toString("utf-8")
 
         // replace values
         html = html.replace("{{currentServerTime}}", currentServerTime)
+        html = html.replace("{{serverTimeMode}}", serverTimeSettings.mode)
         html = html.replace("{{gachaOptions}}", gachaOptions.map((option) => `
             <option value="${option.id}" ${option.id === "1" ? "selected" : ""}>${option.label}</option>
         `).join(""))

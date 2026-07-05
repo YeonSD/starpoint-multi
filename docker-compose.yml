@@ -41,6 +41,7 @@ services:
     depends_on:
       - wireguard
     environment:
+      TZ: ${TZ:-Asia/Seoul}
       CDN_DIR: /app/.cdn
       LISTEN_HOST: 0.0.0.0
       LISTEN_PORT: 8000
@@ -70,6 +71,7 @@ services:
       - wireguard
       - starpoint
     environment:
+      TZ: ${TZ:-Asia/Seoul}
       STARPOINT_MULTI_PORT: 18888
       STARPOINT_DUMMY_MULTI_SKIP_EARLY_BATTLE_START: "1"
       STARPOINT_DUMMY_MULTI_RESPONSE_MODE: accept_array_params

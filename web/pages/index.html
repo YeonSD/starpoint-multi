@@ -67,33 +67,28 @@
                 <h3 class="text-xl text-on-background font-semibold">Select the active gacha table.</h3>
                 <div class="text-center">
                     <h3 class="text-lg text-on-surface-variant">Current server time:
-                        <span id="server-time" class="font-bold text-on-surface">{{currentServerTime}}</span> UTC
+                        <span id="server-time-local" class="font-bold text-on-surface">{{currentServerLocalTime}}</span>
+                        <span id="server-time-zone" class="font-bold text-on-surface">{{serverTimeZone}}</span>
                     </h3>
+                    <p class="text-xs text-on-surface-variant">UTC:
+                        <span id="server-time">{{currentServerTime}}</span>
+                    </p>
                     <p class="text-sm text-on-surface-variant">Mode:
                         <span id="server-time-mode" class="font-bold">{{serverTimeMode}}</span>
                     </p>
                 </div>
-                <select id="gacha_id" name="gacha_id" class="bg-surface-container rounded-2xl border border-outline-variant p-3 max-w-full" required>
-                    {{gachaOptions}}
-                </select>
-                <section class="w-full max-w-3xl grid md:grid-cols-3 gap-3">
-                    <label class="flex flex-col gap-2 rounded-2xl border border-outline-variant bg-surface p-4">
-                        <span class="font-bold">Fixed</span>
-                        <span class="text-sm text-on-surface-variant">Freeze time at the selected gacha table. Safest for gacha-only testing.</span>
-                        <input type="radio" name="time_mode" value="fixed" checked>
-                    </label>
-                    <label class="flex flex-col gap-2 rounded-2xl border border-outline-variant bg-surface p-4">
-                        <span class="font-bold">Ticking</span>
-                        <span class="text-sm text-on-surface-variant">Start from the selected table and advance with real elapsed time.</span>
-                        <input type="radio" name="time_mode" value="ticking">
-                    </label>
-                    <label class="flex flex-col gap-2 rounded-2xl border border-outline-variant bg-surface p-4">
-                        <span class="font-bold">Date only</span>
-                        <span class="text-sm text-on-surface-variant">Use the selected table date with the current real UTC clock time.</span>
-                        <input type="radio" name="time_mode" value="date_override">
-                    </label>
+                <section class="w-full max-w-3xl grid md:grid-cols-[1fr_180px] gap-3">
+                    <select id="gacha_id" name="gacha_id" class="bg-surface-container rounded-2xl border border-outline-variant p-3 max-w-full" required>
+                        {{gachaOptions}}
+                    </select>
+                    <select id="time-mode-select" name="time_mode" class="bg-surface-container rounded-2xl border border-outline-variant p-3" required>
+                        <option value="fixed" {{fixedSelected}}>Fixed</option>
+                        <option value="ticking" {{tickingSelected}}>Ticking</option>
+                        <option value="date_override" {{dateOverrideSelected}}>Date only</option>
+                    </select>
                 </section>
-                <p class="max-w-3xl rounded-2xl border border-outline-variant bg-surface-container-low p-4 text-sm text-on-surface-variant">
+                <p id="time-mode-description" class="max-w-3xl rounded-2xl border border-outline-variant bg-surface-container-low p-4 text-sm text-on-surface-variant"></p>
+                <p class="max-w-3xl text-sm text-on-surface-variant">
                     Changing server time can affect gacha availability, stamina recovery, missions, shops, and login state.
                     For live servers, announce maintenance and ask players to reconnect after changing this setting.
                 </p>
@@ -131,15 +126,30 @@
         </article>
     </div>
     <script>
+        const timeModeDescriptions = {
+            fixed: "Fixed: freeze time at the selected gacha table. This is safest when only gacha availability matters.",
+            ticking: "Ticking: start from the selected gacha table and advance with real elapsed time. Use this for stamina or mission systems.",
+            date_override: "Date only: use the selected table date with the current server clock time. This is usually the most natural live-server mode."
+        };
+
+        function updateTimeModeDescription() {
+            const select = document.getElementById("time-mode-select");
+            document.getElementById("time-mode-description").textContent = timeModeDescriptions[select.value] || "";
+        }
+
         async function refreshServerTime() {
             const response = await fetch("/api/server/timeState");
             if (!response.ok) return;
             const body = await response.json();
             if (!body.ok) return;
             document.getElementById("server-time").textContent = body.server_time.replace(/\.\d\d\dZ$/, "");
+            document.getElementById("server-time-local").textContent = body.server_time_local;
+            document.getElementById("server-time-zone").textContent = body.time_zone;
             document.getElementById("server-time-mode").textContent = body.settings.mode;
         }
 
+        document.getElementById("time-mode-select").addEventListener("change", updateTimeModeDescription);
+        updateTimeModeDescription();
         setInterval(refreshServerTime, 1000);
 
         document.getElementById("admin-password-form").addEventListener("submit", async (event) => {

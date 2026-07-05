@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { getServerDate, getServerTimeSettings, ServerTimeMode, setServerTime, setServerTimeSettings } from "../../utils";
+import { formatServerDateForTimeZone, getServerDate, getServerTimeSettings, getServerTimeZone, ServerTimeMode, setServerTime, setServerTimeSettings } from "../../utils";
 import { setAdminPassword, verifyAdminCredentials } from "../../lib/adminAuth";
 import { getGachaScheduleOption } from "../../lib/gachaSchedule";
 
@@ -23,6 +23,8 @@ const routes = async (fastify: FastifyInstance) => {
         return {
             ok: true,
             server_time: getServerDate().toISOString(),
+            server_time_local: formatServerDateForTimeZone(),
+            time_zone: getServerTimeZone(),
             settings: getServerTimeSettings()
         };
     })

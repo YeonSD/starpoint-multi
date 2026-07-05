@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { readFileSync } from "fs";
 import path from "path";
 import playerRoutePlugin from "./player"
-import { getServerDate, getServerTimeSettings } from "../../utils";
+import { formatServerDateForTimeZone, getServerDate, getServerTimeSettings, getServerTimeZone } from "../../utils";
 import { registerAdminAuth } from "./auth";
 import roomsRoutePlugin from "./rooms";
 import itemsRoutePlugin from "./items";
@@ -23,7 +23,12 @@ const routes = async (fastify: FastifyInstance) => {
 
         // replace values
         html = html.replace("{{currentServerTime}}", currentServerTime)
+        html = html.replace("{{currentServerLocalTime}}", formatServerDateForTimeZone())
+        html = html.replace("{{serverTimeZone}}", getServerTimeZone())
         html = html.replace("{{serverTimeMode}}", serverTimeSettings.mode)
+        html = html.replace("{{fixedSelected}}", serverTimeSettings.mode === "fixed" ? "selected" : "")
+        html = html.replace("{{tickingSelected}}", serverTimeSettings.mode === "ticking" ? "selected" : "")
+        html = html.replace("{{dateOverrideSelected}}", serverTimeSettings.mode === "date_override" ? "selected" : "")
         html = html.replace("{{gachaOptions}}", gachaOptions.map((option) => `
             <option value="${option.id}" ${option.id === "1" ? "selected" : ""}>${option.label}</option>
         `).join(""))

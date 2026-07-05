@@ -68,6 +68,29 @@ export function getServerDate(date: Date = new Date()): Date {
     return new Date(date)
 }
 
+export function getServerTimeZone(): string {
+    return process.env.TZ || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+}
+
+export function formatServerDateForTimeZone(date: Date = getServerDate()): string {
+    const timeZone = getServerTimeZone();
+    const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false
+    }).formatToParts(date).reduce<Record<string, string>>((result, part) => {
+        result[part.type] = part.value;
+        return result;
+    }, {});
+
+    return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
+}
+
 export function setServerTime(date: Date | null) {
     if (date !== null && Number.isNaN(date.getTime())) {
         throw new Error("Invalid server time.");

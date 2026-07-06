@@ -1,6 +1,6 @@
 import { randomBytes } from "crypto";
 import getDatabase, { Database } from ".";
-import { generateViewerId, getServerTime } from "../utils";
+import { generateViewerId, getServerDate, getServerTime } from "../utils";
 import { Account, DailyChallengePointListCampaign, DailyChallengePointListEntry, MergedPlayerData, PartyCategory, Player, PlayerActiveMission, PlayerBoxGacha, PlayerBoxGachaDrawnReward, PlayerCharacter, PlayerCharacterBondToken, PlayerCharacterExBoost, PlayerDrawnQuest, PlayerEquipment, PlayerGachaCampaign, PlayerGachaInfo, PlayerMail, PlayerMultiSpecialExchangeCampaign, PlayerParty, PlayerPartyGroup, PlayerPeriodicRewardPoint, PlayerQuestProgress, PlayerRushEvent, PlayerRushEventClearedFolders, PlayerRushEventPlayedParty, PlayerStartDashExchangeCampaign, RawAccount, RawDailyChallengePointListCampaign, RawDailyChallengePointListEntry, RawPlayer, RawPlayerActiveMission, RawPlayerActiveMissionStage, RawPlayerBoxGacha, RawPlayerCharacter, RawPlayerCharacterBondToken, RawPlayerCharacterManaNode, RawPlayerClearedRegularMission, RawPlayerDrawnQuest, RawPlayerEquipment, RawPlayerGachaCampaign, RawPlayerGachaInfo, RawPlayerItem, RawPlayerMail, RawPlayerMultiSpecialExchangeCampaign, RawPlayerOption, RawPlayerParty, RawPlayerPartyGroup, RawPlayerQuestProgress, RawPlayerRushEvent, RawPlayerRushEventClearedFolder, RawPlayerRushEventPlayedParty, RawPlayerRushEventRanking, RawPlayerStartDashExchangeCampaign, RawPlayerTriggeredTutorial, RawSession, RushEventBattleType, GetRushEventEndlessRankingListResult, Session, SessionType, UserRushEventEndlessBattleRanking, UserRushEventPlayedParty } from "./types";
 import { deserializeBoolean, deserializeNumberList, getDefaultPlayerData, serializeBoolean, serializeNumberList } from "./utils";
 import { getPlayerRushEventEndlessBattleRankingSync } from "../lib/rush";
@@ -1674,7 +1674,7 @@ export function insertPlayerMailSync(
         rewardPeriodLimited?: boolean
     }
 ): PlayerMail {
-    const createTime = input.createTime ?? new Date()
+    const createTime = input.createTime ?? getServerDate()
     const result = db.prepare(`
     INSERT INTO players_mails (
         player_id, type, type_id, number, reason_id, subject, description,
@@ -1700,7 +1700,7 @@ export function insertPlayerMailSync(
 export function markPlayerMailReceivedSync(
     playerId: number,
     mailId: number,
-    receiveTime: Date = new Date()
+    receiveTime: Date = getServerDate()
 ) {
     db.prepare(`
     UPDATE players_mails

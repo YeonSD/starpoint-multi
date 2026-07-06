@@ -38,11 +38,15 @@ TZ="Asia/Seoul"
 `TZ` controls the local timezone shown in the admin dashboard and used by Live server time mode.
 The default is `Asia/Seoul`; change it only if you want to operate the server in another timezone.
 
-Start:
+Start or update:
 
 ```bash
-docker compose up -d --build
+sh scripts/deploy.sh
 ```
+
+Use this script instead of recreating individual services by hand. `nginx`,
+`starpoint`, and `realtime` share the WireGuard container network namespace, so
+the stack must be recreated together after builds.
 
 Open the admin page:
 
@@ -86,4 +90,5 @@ The Docker stack runs:
 - WireGuard on UDP `51820`
 - DNS redirection for World Flipper domains through WireGuard
 
-Open inbound TCP `8000` and UDP `51820` on the host firewall/cloud security list.
+Open inbound UDP `51820` to all players. Restrict TCP `8000` to the admin's IP
+whenever possible.

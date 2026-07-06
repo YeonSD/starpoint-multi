@@ -7,7 +7,6 @@ import { givePlayerCharactersExpSync } from "../../lib/character";
 import { getQuestFromCategorySync } from "../../lib/assets";
 import { givePlayerRewardSync, givePlayerScoreRewardsSync } from "../../lib/quest";
 import { BattleQuest } from "../../lib/types";
-import { serializeStaminaUserInfo } from "../../lib/stamina";
 
 interface GetRoomsBody {
     event_id: number,
@@ -1015,7 +1014,8 @@ const routes = async (fastify: FastifyInstance) => {
                     "free_vmoney": finalPlayerData.freeVmoney,
                     "rank_point": newRankPoint,
                     "max_stamina": finalPlayerData.stamina,
-                    ...serializeStaminaUserInfo(finalPlayerData),
+                    "stamina": finalPlayerData.stamina,
+                    "stamina_heal_time": getServerTime(finalPlayerData.staminaHealTime),
                     "boost_point": finalPlayerData.boostPoint,
                     "boss_boost_point": finalPlayerData.bossBoostPoint
                 },
@@ -1089,7 +1089,8 @@ const routes = async (fastify: FastifyInstance) => {
             "data_headers": dataHeaders,
             "data": {
                 "user_info": {
-                    ...serializeStaminaUserInfo(playerData)
+                    "stamina": playerData?.stamina ?? 0,
+                    "stamina_heal_time": getServerTime(playerData?.staminaHealTime ?? new Date())
                 },
                 "category_id": category,
                 "is_multi": "multi",

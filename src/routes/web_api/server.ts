@@ -2,7 +2,6 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { formatServerDateForTimeZone, formatServerDateInputForTimeZone, getServerDate, getServerTimeSettings, getServerTimeZone, ServerTimeMode, setServerTime, setServerTimeSettings } from "../../utils";
 import { setAdminPassword, verifyAdminCredentials } from "../../lib/adminAuth";
 import { getGachaScheduleOption } from "../../lib/gachaSchedule";
-import { getEffectiveStaminaMode, getStaminaSettings, isStaminaMode, setStaminaSettings } from "../../lib/stamina";
 
 interface TimeQuery {
     time: string | undefined
@@ -19,10 +18,6 @@ interface AdminPasswordBody {
     confirm_password?: string
 }
 
-interface StaminaSettingsBody {
-    live_mode?: unknown
-}
-
 const routes = async (fastify: FastifyInstance) => {
     fastify.get("/timeState", async () => {
         return {
@@ -30,11 +25,7 @@ const routes = async (fastify: FastifyInstance) => {
             server_time: getServerDate().toISOString(),
             server_time_local: formatServerDateForTimeZone(),
             time_zone: getServerTimeZone(),
-            settings: getServerTimeSettings(),
-            stamina: {
-                settings: getStaminaSettings(),
-                effective_mode: getEffectiveStaminaMode()
-            }
+            settings: getServerTimeSettings()
         };
     })
 
@@ -135,24 +126,6 @@ const routes = async (fastify: FastifyInstance) => {
 
         return reply.status(200).send({
             "ok": true
-        });
-    })
-
-    fastify.post("/staminaSettings", async (request: FastifyRequest, reply: FastifyReply) => {
-        const body = request.body as StaminaSettingsBody | undefined;
-        const liveMode = body?.live_mode;
-        if (!isStaminaMode(liveMode)) {
-            return reply.status(400).send({
-                "error": "Bad Request",
-                "message": "Invalid stamina mode."
-            });
-        }
-
-        const settings = setStaminaSettings({ liveMode });
-        return reply.status(200).send({
-            "ok": true,
-            "settings": settings,
-            "effective_mode": getEffectiveStaminaMode()
         });
     })
 }

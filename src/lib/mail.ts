@@ -15,23 +15,35 @@ import { CurrencyReward, EquipmentItemReward, PlayerRewardResult, Reward, Reward
 
 export enum MailKind {
     ITEM = 0,
-    FREE_VMONEY = 1,
+    PAID_VMONEY = 1,
+    FREE_VMONEY = 2,
+    CHARACTER = 3,
+    EQUIPMENT = 4,
+    STAR_CRUMB = 5,
     FREE_MANA = 6,
-    EXP = 7
+    EXP = 7,
+    BOND_TOKEN = 8,
+    BOSS_BOOST_POINT = 9,
+    BOOST_POINT = 10,
+    DEGREE = 11,
+    DAILY_CHALLENGE_POINT = 12,
+    PERIODIC_REWARD_POINT = 13
 }
+
+type HaxeOption<T> = [0, T] | [1]
 
 export interface SerializedMail {
     create_time: string
-    description: string | null
+    description: HaxeOption<string>
     id: number
     number: number
     reason_id: number
     receive_time: string
-    reward_limit_time: string | null
+    reward_limit_time: HaxeOption<string>
     reward_period_limited: boolean
-    subject: string | null
+    subject: HaxeOption<string>
     type: number
-    type_id: number | null
+    type_id: HaxeOption<number>
 }
 
 export interface SendCurrencyMailResult {
@@ -46,16 +58,16 @@ export interface SendCurrencyMailResult {
 export function serializeMail(mail: PlayerMail): SerializedMail {
     return {
         "create_time": clientSerializeDate(mail.createTime),
-        "description": mail.description,
+        "description": haxeOption(mail.description),
         "id": mail.id,
         "number": mail.number,
         "reason_id": mail.reasonId,
         "receive_time": mail.receiveTime === null ? "" : clientSerializeDate(mail.receiveTime),
-        "reward_limit_time": mail.rewardLimitTime === null ? null : clientSerializeDate(mail.rewardLimitTime),
+        "reward_limit_time": haxeOption(mail.rewardLimitTime === null ? null : clientSerializeDate(mail.rewardLimitTime)),
         "reward_period_limited": mail.rewardPeriodLimited,
-        "subject": mail.subject,
+        "subject": haxeOption(mail.subject),
         "type": mail.type,
-        "type_id": mail.typeId
+        "type_id": haxeOption(mail.typeId)
     }
 }
 
@@ -241,4 +253,8 @@ function defaultCurrencySubject(currency: "free_vmoney" | "free_mana"): string {
 function defaultCurrencyDescription(currency: "free_vmoney" | "free_mana", amount: number): string {
     const name = currency === "free_vmoney" ? "lodestar beads" : "mana";
     return `You received ${amount} ${name}.`;
+}
+
+function haxeOption<T>(value: T | null | undefined): HaxeOption<T> {
+    return value === null || value === undefined ? [1] : [0, value];
 }

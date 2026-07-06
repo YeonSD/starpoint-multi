@@ -8,7 +8,7 @@ build/
 .env.local
 key/
 deployment/ssl/
-rootca.crt
+rootca*.crt
 
 .cdn/
 .cn-cdn/

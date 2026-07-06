@@ -2,6 +2,41 @@
 
 This document tracks the planned development order for turning Starpoint Multi into a usable private server package.
 
+## Current Handoff Notes
+
+Use this section when another agent or developer continues the work.
+
+Current stable baseline:
+
+- The project is deployed with Docker on the Oracle VM and can serve the admin UI, WireGuard, DNS redirection, HTTP API, and realtime multiplayer stack.
+- The game client has not been patched. Do not modify APK, SWF, IL2CPP, or client binaries unless a future task explicitly changes this rule.
+- Multiplayer core behavior is partially restored: rooms can be created/joined, ready state works, battles can start, player action sync has worked in live tests, rewards are partially functional, and room return/disband handling has been improved.
+- Admin UI currently includes Dashboard, Players, Rooms, Items, and Source Code.
+- Direct item grants currently support `free_vmoney` and `free_mana`; direct grants may be negative but clamp balances at zero. Scheduled grants are positive-only.
+- `TZ` defaults to `Asia/Seoul` because the expected initial community is Korean. Operators may change it in `.env`.
+
+Important unresolved issue:
+
+- `Live` server time mode currently causes a client login/load failure around 5% with `No.H500`.
+- Until this is analyzed, operate the game in `Fixed` mode for normal testing.
+- Do not build stamina, daily mission, or mail timestamp logic on top of `Live` mode until the H500 cause is found and fixed.
+
+First debugging target for `Live` mode:
+
+- Compare the last successful HTTP API calls in `Fixed` mode against the failing `Live` mode run.
+- Inspect `.database/server-time.json`, `/api/server/timeState`, and the `servertime` values in API responses.
+- Identify the exact endpoint that returns an error or malformed payload before `No.H500`.
+- Check whether the selected gacha date plus current local time falls outside an expected asset, campaign, banner, shop, agreement, tutorial, or login time range.
+- Preserve backwards compatibility with existing saved `fixed`, `live`, and legacy `date_override`/`ticking` server-time files.
+
+Do not do this without evidence:
+
+- Do not rewrite the multiplayer protocol just because a UI state looks wrong.
+- Do not add server-side bot AI before proving whether the client already has fallback AI.
+- Do not delete or regenerate `.database`, `.generated`, `.cdn`, or player state during feature work.
+- Do not commit logs, CDN files, keys, emulator artifacts, or private saves.
+- Do not assume mail, stamina, or mission response shapes. Capture real client requests first.
+
 ## Guiding Principles
 
 - Keep gameplay changes server-side whenever possible. Do not patch the game client unless there is no practical server-side route.
@@ -18,6 +53,12 @@ Target behavior:
 - `Fixed`: freeze the game server at a selected timestamp. This is the default because it is safest for gacha and tutorial compatibility.
 - `Live`: use the selected gacha table date with the current server clock time in the configured `TZ` timezone.
 - The saved time mode is a core server setting. Future stamina, daily mission, and mail timestamp behavior should branch on `fixed` versus `live`.
+
+Current blocker:
+
+- `Live` mode has been implemented but is not yet safe for gameplay because it currently triggers `No.H500` during client load.
+- The next server-time task is investigation, not feature expansion.
+- Expected outcome of the investigation: either fix `Live` mode or document why only `Fixed` is supported until a deeper client/API dependency is implemented.
 
 Admin UI:
 

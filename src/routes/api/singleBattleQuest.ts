@@ -8,6 +8,7 @@ import { generateDataHeaders, getServerTime } from "../../utils";
 import { rushEventFolderMaxRounds } from "./rushEvent";
 import { RushEventBattleType, UserRushEventPlayedParty } from "../../data/types";
 import { getSerializedPlayerRushEventPlayedPartiesSync } from "../../lib/rush";
+import { serializeStaminaUserInfo } from "../../lib/stamina";
 
 interface StartBody {
     quest_id: number
@@ -328,8 +329,7 @@ const routes = async (fastify: FastifyInstance) => {
                     "exp_pooled_time": getServerTime(finalPlayerData.expPooledTime),
                     "free_vmoney": finalPlayerData.freeVmoney,
                     "rank_point": newRankPoint,
-                    "stamina": finalPlayerData.stamina,
-                    "stamina_heal_time": getServerTime(finalPlayerData.staminaHealTime),
+                    ...serializeStaminaUserInfo(finalPlayerData),
                     "boost_point": newBoostPoint,
                     "boss_boost_point": newBossBoostPoint
                 },

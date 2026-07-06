@@ -91,6 +91,16 @@
                     Changing server time can affect gacha availability, stamina recovery, missions, shops, and login state.
                     For live servers, announce maintenance and ask players to reconnect after changing this setting.
                 </p>
+                <section class="w-full max-w-3xl grid md:grid-cols-[180px_1fr] gap-3 items-center">
+                    <label for="stamina-live-mode" class="font-semibold text-on-background">Stamina</label>
+                    <select id="stamina-live-mode" class="bg-surface-container rounded-2xl border border-outline-variant p-3">
+                        <option value="infinite" {{staminaLiveInfiniteSelected}}>Infinite in Live</option>
+                        <option value="normal" {{staminaLiveNormalSelected}}>Normal in Live</option>
+                    </select>
+                </section>
+                <p id="stamina-mode-description" class="max-w-3xl rounded-2xl border border-outline-variant bg-surface-container-low p-4 text-sm text-on-surface-variant">
+                    Effective stamina mode: <span id="effective-stamina-mode" class="font-bold">{{effectiveStaminaMode}}</span>
+                </p>
                 <div class="flex gap-5 justify-center">
                     <button type="submit"
                         class="text-base bg-primary text-on-primary h-[40px] px-[24px] rounded-full flex items-center justify-center relative before:transition-opacity before:absolute before:w-full before:h-full before:left-0 before:top-0 before:rounded-full before:opacity-0 before:hover:bg-on-primary before:hover:opacity-[0.12] transition-opacity">
@@ -129,10 +139,24 @@
             fixed: "Fixed: freeze time at the selected gacha table. This is safest for gacha or tutorial compatibility.",
             live: "Live: use the selected gacha date with the current server clock time. Future stamina, daily mission, and mail timestamps should use this mode."
         };
+        const staminaModeDescriptions = {
+            infinite: "Fixed always forces infinite stamina. In Live mode, this keeps the client from waiting for recovery and is safest until full stamina recovery is implemented.",
+            normal: "Normal mode is only available while server time is Live. It preserves current stamina values and prevents invalid future recovery timestamps."
+        };
 
         function updateTimeModeDescription() {
             const select = document.getElementById("time-mode-select");
             document.getElementById("time-mode-description").textContent = timeModeDescriptions[select.value] || "";
+            updateStaminaModeDescription();
+        }
+
+        function updateStaminaModeDescription() {
+            const timeMode = document.getElementById("time-mode-select").value;
+            const staminaSelect = document.getElementById("stamina-live-mode");
+            const effectiveMode = timeMode === "fixed" ? "infinite" : staminaSelect.value;
+            staminaSelect.disabled = timeMode === "fixed";
+            document.getElementById("effective-stamina-mode").textContent = effectiveMode;
+            document.getElementById("stamina-mode-description").lastChild.textContent = ` - ${staminaModeDescriptions[staminaSelect.value] || ""}`;
         }
 
         async function refreshServerTime() {
@@ -144,9 +168,24 @@
             document.getElementById("server-time-local").textContent = body.server_time_local;
             document.getElementById("server-time-zone").textContent = body.time_zone;
             document.getElementById("server-time-mode").textContent = body.settings.mode;
+            if (body.stamina) {
+                document.getElementById("effective-stamina-mode").textContent = body.stamina.effective_mode;
+            }
         }
 
         document.getElementById("time-mode-select").addEventListener("change", updateTimeModeDescription);
+        document.getElementById("stamina-live-mode").addEventListener("change", async (event) => {
+            const response = await fetch("/api/server/staminaSettings", {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ live_mode: event.target.value })
+            });
+            if (response.ok) {
+                const body = await response.json();
+                document.getElementById("effective-stamina-mode").textContent = body.effective_mode;
+            }
+            updateStaminaModeDescription();
+        });
         updateTimeModeDescription();
         setInterval(refreshServerTime, 1000);
 

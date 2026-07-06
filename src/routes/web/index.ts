@@ -9,6 +9,7 @@ import itemsRoutePlugin from "./items";
 import sourceRoutePlugin from "./source";
 import { isDefaultAdminPasswordActive } from "../../lib/adminAuth";
 import { getGachaScheduleOptions } from "../../lib/gachaSchedule";
+import { getEffectiveStaminaMode, getStaminaSettings } from "../../lib/stamina";
 
 export const staticPagesDir = "../../../web/pages"
 
@@ -18,6 +19,7 @@ const routes = async (fastify: FastifyInstance) => {
     fastify.get("/", async (_: FastifyRequest, reply: FastifyReply) => {
         const currentServerTime = getServerDate().toISOString().replace(/\.\d\d\dZ/, "")
         const serverTimeSettings = getServerTimeSettings()
+        const staminaSettings = getStaminaSettings()
         const gachaOptions = getGachaScheduleOptions()
         let html = readFileSync(path.join(__dirname, staticPagesDir, "index.html")).toString("utf-8")
 
@@ -28,6 +30,9 @@ const routes = async (fastify: FastifyInstance) => {
         html = html.replace("{{serverTimeMode}}", serverTimeSettings.mode)
         html = html.replace("{{fixedSelected}}", serverTimeSettings.mode === "fixed" ? "selected" : "")
         html = html.replace("{{liveSelected}}", serverTimeSettings.mode === "live" ? "selected" : "")
+        html = html.replace("{{staminaLiveInfiniteSelected}}", staminaSettings.liveMode === "infinite" ? "selected" : "")
+        html = html.replace("{{staminaLiveNormalSelected}}", staminaSettings.liveMode === "normal" ? "selected" : "")
+        html = html.replace("{{effectiveStaminaMode}}", getEffectiveStaminaMode())
         html = html.replace("{{gachaOptions}}", gachaOptions.map((option) => `
             <option value="${option.id}" ${option.id === "1" ? "selected" : ""}>${option.label}</option>
         `).join(""))

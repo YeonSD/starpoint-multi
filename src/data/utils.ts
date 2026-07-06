@@ -4,6 +4,7 @@ import { ClientPlayerData, DailyChallengePointListEntry, MergedPlayerData, Party
 
 import { availableAssetVersion } from "../routes/api/asset"
 import { deserializePlayerRushEventPlayedParty, deserializeRushEvent, getPlayerActiveMissionsSync, getPlayerBoxGachasSync, getPlayerCharactersManaNodesSync, getPlayerCharactersSync, getPlayerClearedRegularMissionListSync, getPlayerDailyChallengePointListSync, getPlayerDrawnQuestsSync, getPlayerEquipmentListSync, getPlayerGachaCampaignListSync, getPlayerGachaInfoListSync, getPlayerItemsSync, getPlayerMultiSpecialExchangeCampaignsSync, getPlayerOptionsSync, getPlayerPartyGroupListSync, getPlayerPeriodicRewardPointsSync, getPlayerQuestProgressSync, getPlayerRushEventListClearedFoldersSync, getPlayerRushEventListPlayedPartiesSync, getPlayerRushEventListSync, getPlayerStartDashExchangeCampaignsSync, getPlayerSync, getPlayerTriggeredTutorialsSync, serializePlayerRushEventPlayedParty } from "./wdfpData"
+import { serializeStaminaUserInfo } from "../lib/stamina"
 
 export interface SerializePlayerDataOptions {
     viewerId?: number
@@ -255,8 +256,7 @@ export function serializePlayerData(
 
     const clientData: ClientPlayerData = {
         "user_info": {
-            "stamina": playerData.stamina,
-            "stamina_heal_time": getServerTime(playerData.staminaHealTime),
+            ...serializeStaminaUserInfo(playerData),
             "boost_point": playerData.boostPoint,
             "boss_boost_point": playerData.bossBoostPoint,
             "transition_state": playerData.transitionState,

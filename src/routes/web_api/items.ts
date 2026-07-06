@@ -8,6 +8,7 @@ import {
     isScheduledGrantInterval,
     listScheduledCurrencyGrants,
     runScheduledCurrencyGrantNow,
+    sendCurrencyMailGrantToPlayers,
     setScheduledCurrencyGrantEnabled
 } from "../../lib/itemGrantSchedules";
 
@@ -15,7 +16,8 @@ interface GrantCurrencyBody {
     target?: "selected" | "all",
     player_ids?: number[] | string[],
     currency?: unknown,
-    amount?: number | string
+    amount?: number | string,
+    delivery?: "direct" | "mail"
 }
 
 interface CreateScheduleBody {
@@ -55,7 +57,9 @@ const routes = async (fastify: FastifyInstance) => {
             });
         }
 
-        const result = grantCurrencyToPlayers(playerIds, currency, amount);
+        const result = body?.delivery === "direct"
+            ? grantCurrencyToPlayers(playerIds, currency, amount)
+            : sendCurrencyMailGrantToPlayers(playerIds, currency, amount);
 
         return reply.status(200).send({
             "ok": true,

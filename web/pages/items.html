@@ -64,8 +64,8 @@
                 class="w-full border border-outline-variant rounded-3xl p-5 bg-surface-container-lowest flex flex-col gap-5">
                 <header>
                     <h2 class="text-2xl font-bold text-on-background">Currency Management</h2>
-                    <p id="grant-status" class="text-on-surface-variant">Grant lodestar beads or mana directly to
-                        player saves. Mail delivery is not implemented yet.</p>
+                    <p id="grant-status" class="text-on-surface-variant">Send lodestar beads or mana by in-game mail,
+                        or apply the change directly to player saves.</p>
                 </header>
                 <form id="grant-form" class="flex flex-col gap-5">
                     <section class="flex flex-col gap-3">
@@ -83,7 +83,7 @@
                         </div>
                         <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-3">{{playerOptions}}</div>
                     </section>
-                    <section class="grid md:grid-cols-[1fr_160px_auto] gap-3">
+                    <section class="grid md:grid-cols-[1fr_160px_160px_auto] gap-3">
                         <select name="currency" class="bg-surface-container rounded-2xl border border-outline-variant p-3"
                             required>
                             <option value="free_vmoney">Lodestar Beads (free_vmoney)</option>
@@ -91,9 +91,14 @@
                         </select>
                         <input name="amount" type="number" value="" placeholder="Amount, e.g. 1000 or -1000"
                             class="bg-surface-container rounded-2xl border border-outline-variant p-3" required>
+                        <select name="delivery" class="bg-surface-container rounded-2xl border border-outline-variant p-3"
+                            required>
+                            <option value="mail">Mail</option>
+                            <option value="direct">Direct</option>
+                        </select>
                         <button id="grant-submit" type="submit"
                             class="px-5 py-3 rounded-full bg-primary text-on-primary font-bold hover:opacity-90 transition-opacity">
-                            Grant
+                            Send
                         </button>
                     </section>
                 </form>
@@ -102,7 +107,7 @@
                 class="w-full border border-outline-variant rounded-3xl p-5 bg-surface-container-lowest flex flex-col gap-5">
                 <header>
                     <h2 class="text-2xl font-bold text-on-background">Scheduled Grants</h2>
-                    <p id="schedule-status" class="text-on-surface-variant">Grant currency directly to every current
+                    <p id="schedule-status" class="text-on-surface-variant">Send currency mail to every current
                         player on a daily, weekly, or monthly schedule.</p>
                 </header>
                 <form id="schedule-form" class="grid md:grid-cols-[1fr_160px_160px_220px_auto] gap-3">
@@ -157,13 +162,14 @@
                 target,
                 player_ids: playerIds,
                 currency: form.currency.value,
-                amount: form.amount.value
+                amount: form.amount.value,
+                delivery: form.delivery.value
             };
 
             submit.disabled = true;
-            submit.textContent = "Granting...";
+            submit.textContent = payload.delivery === "mail" ? "Sending..." : "Granting...";
             submit.classList.add("opacity-60", "cursor-not-allowed");
-            status.textContent = "Processing currency grant...";
+            status.textContent = payload.delivery === "mail" ? "Sending mail..." : "Processing currency grant...";
             status.className = "rounded-2xl border border-outline-variant bg-surface-container-low px-4 py-3 font-bold text-on-surface";
 
             try {
@@ -180,17 +186,19 @@
                 }
 
                 const granted = body.result.filter((entry) => entry.skipped !== true).length;
-                status.textContent = `Grant complete. Updated ${granted} player(s).`;
+                status.textContent = payload.delivery === "mail"
+                    ? `Mail sent to ${granted} player(s).`
+                    : `Grant complete. Updated ${granted} player(s).`;
                 status.className = "rounded-2xl border border-green-600 bg-green-50 px-4 py-3 font-bold text-green-700";
                 form.reset();
-                submit.textContent = "Granted";
+                submit.textContent = payload.delivery === "mail" ? "Sent" : "Granted";
             } catch (error) {
                 status.textContent = "Failed to grant currency.";
                 status.className = "rounded-2xl border border-red-500 bg-red-50 px-4 py-3 font-bold text-red-700";
             } finally {
                 setTimeout(() => {
                     submit.disabled = false;
-                    submit.textContent = "Grant";
+                    submit.textContent = "Send";
                     submit.classList.remove("opacity-60", "cursor-not-allowed");
                 }, 1500);
             }

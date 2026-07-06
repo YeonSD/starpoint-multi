@@ -92,6 +92,22 @@ export default function init(
         FOREIGN KEY (player_id) REFERENCES players (id) ON DELETE CASCADE
     )`).run();
 
+    database.prepare(`CREATE TABLE IF NOT EXISTS players_mails (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        player_id INTEGER NOT NULL,
+        type INTEGER NOT NULL,
+        type_id INTEGER,
+        number INTEGER NOT NULL,
+        reason_id INTEGER NOT NULL,
+        subject TEXT,
+        description TEXT,
+        create_time DATE NOT NULL,
+        receive_time DATE,
+        reward_limit_time DATE,
+        reward_period_limited INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY (player_id) REFERENCES players (id) ON DELETE CASCADE
+    )`).run();
+
     database.prepare(`CREATE TABLE IF NOT EXISTS daily_challenge_point_list_entries (
         id INTEGER NOT NULL,
         point INTEGER NOT NULL,

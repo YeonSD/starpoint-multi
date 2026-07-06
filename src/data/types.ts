@@ -501,6 +501,36 @@ export interface Player {
     tutorialSkipFlag: boolean | null
 }
 
+export interface RawPlayerMail {
+    id: number
+    player_id: number
+    type: number
+    type_id: number | null
+    number: number
+    reason_id: number
+    subject: string | null
+    description: string | null
+    create_time: string
+    receive_time: string | null
+    reward_limit_time: string | null
+    reward_period_limited: number
+}
+
+export interface PlayerMail {
+    id: number
+    playerId: number
+    type: number
+    typeId: number | null
+    number: number
+    reasonId: number
+    subject: string | null
+    description: string | null
+    createTime: Date
+    receiveTime: Date | null
+    rewardLimitTime: Date | null
+    rewardPeriodLimited: boolean
+}
+
 // client types
 // Types used by the pinball game client.
 export interface ClientUserInfo {

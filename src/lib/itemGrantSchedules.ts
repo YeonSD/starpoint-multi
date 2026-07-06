@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 import { getAllPlayersSync, getPlayerSync, updatePlayerSync } from "../data/wdfpData";
+import { sendCurrencyMailToPlayers } from "./mail";
 
 export type GrantCurrency = "free_vmoney" | "free_mana";
 export type ScheduledGrantInterval = "daily" | "weekly" | "monthly";
@@ -13,6 +14,8 @@ export interface CurrencyGrantResult {
     total?: number
     skipped?: boolean
     reason?: string
+    mail_id?: number
+    delivery?: "direct" | "mail"
 }
 
 export interface ScheduledCurrencyGrant {
@@ -70,9 +73,21 @@ export function grantCurrencyToPlayers(
             player_id: playerId,
             currency: currency,
             amount: amount,
-            total: total
+            total: total,
+            delivery: "direct"
         };
     });
+}
+
+export function sendCurrencyMailGrantToPlayers(
+    playerIds: number[],
+    currency: GrantCurrency,
+    amount: number
+): CurrencyGrantResult[] {
+    return sendCurrencyMailToPlayers(playerIds, currency, amount).map((entry) => ({
+        ...entry,
+        delivery: "mail"
+    }));
 }
 
 export function listScheduledCurrencyGrants(): ScheduledCurrencyGrant[] {
@@ -169,7 +184,7 @@ export function startScheduledCurrencyGrantRunner() {
 }
 
 function executeSchedule(schedule: ScheduledCurrencyGrant, now: Date): CurrencyGrantResult[] {
-    const result = grantCurrencyToPlayers(getAllPlayerIdsForGrant(), schedule.currency, schedule.amount);
+    const result = sendCurrencyMailGrantToPlayers(getAllPlayerIdsForGrant(), schedule.currency, schedule.amount);
     schedule.lastRunAt = now.toISOString();
     schedule.lastResultCount = result.filter((entry) => entry.skipped !== true).length;
 

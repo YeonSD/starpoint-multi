@@ -1,7 +1,7 @@
 import { randomBytes } from "crypto";
 import getDatabase, { Database } from ".";
 import { generateViewerId, getServerTime } from "../utils";
-import { Account, DailyChallengePointListCampaign, DailyChallengePointListEntry, MergedPlayerData, PartyCategory, Player, PlayerActiveMission, PlayerBoxGacha, PlayerBoxGachaDrawnReward, PlayerCharacter, PlayerCharacterBondToken, PlayerCharacterExBoost, PlayerDrawnQuest, PlayerEquipment, PlayerGachaCampaign, PlayerGachaInfo, PlayerMultiSpecialExchangeCampaign, PlayerParty, PlayerPartyGroup, PlayerPeriodicRewardPoint, PlayerQuestProgress, PlayerRushEvent, PlayerRushEventClearedFolders, PlayerRushEventPlayedParty, PlayerStartDashExchangeCampaign, RawAccount, RawDailyChallengePointListCampaign, RawDailyChallengePointListEntry, RawPlayer, RawPlayerActiveMission, RawPlayerActiveMissionStage, RawPlayerBoxGacha, RawPlayerCharacter, RawPlayerCharacterBondToken, RawPlayerCharacterManaNode, RawPlayerClearedRegularMission, RawPlayerDrawnQuest, RawPlayerEquipment, RawPlayerGachaCampaign, RawPlayerGachaInfo, RawPlayerItem, RawPlayerMultiSpecialExchangeCampaign, RawPlayerOption, RawPlayerParty, RawPlayerPartyGroup, RawPlayerQuestProgress, RawPlayerRushEvent, RawPlayerRushEventClearedFolder, RawPlayerRushEventPlayedParty, RawPlayerRushEventRanking, RawPlayerStartDashExchangeCampaign, RawPlayerTriggeredTutorial, RawSession, RushEventBattleType, GetRushEventEndlessRankingListResult, Session, SessionType, UserRushEventEndlessBattleRanking, UserRushEventPlayedParty } from "./types";
+import { Account, DailyChallengePointListCampaign, DailyChallengePointListEntry, MergedPlayerData, PartyCategory, Player, PlayerActiveMission, PlayerBoxGacha, PlayerBoxGachaDrawnReward, PlayerCharacter, PlayerCharacterBondToken, PlayerCharacterExBoost, PlayerDrawnQuest, PlayerEquipment, PlayerGachaCampaign, PlayerGachaInfo, PlayerMail, PlayerMultiSpecialExchangeCampaign, PlayerParty, PlayerPartyGroup, PlayerPeriodicRewardPoint, PlayerQuestProgress, PlayerRushEvent, PlayerRushEventClearedFolders, PlayerRushEventPlayedParty, PlayerStartDashExchangeCampaign, RawAccount, RawDailyChallengePointListCampaign, RawDailyChallengePointListEntry, RawPlayer, RawPlayerActiveMission, RawPlayerActiveMissionStage, RawPlayerBoxGacha, RawPlayerCharacter, RawPlayerCharacterBondToken, RawPlayerCharacterManaNode, RawPlayerClearedRegularMission, RawPlayerDrawnQuest, RawPlayerEquipment, RawPlayerGachaCampaign, RawPlayerGachaInfo, RawPlayerItem, RawPlayerMail, RawPlayerMultiSpecialExchangeCampaign, RawPlayerOption, RawPlayerParty, RawPlayerPartyGroup, RawPlayerQuestProgress, RawPlayerRushEvent, RawPlayerRushEventClearedFolder, RawPlayerRushEventPlayedParty, RawPlayerRushEventRanking, RawPlayerStartDashExchangeCampaign, RawPlayerTriggeredTutorial, RawSession, RushEventBattleType, GetRushEventEndlessRankingListResult, Session, SessionType, UserRushEventEndlessBattleRanking, UserRushEventPlayedParty } from "./types";
 import { deserializeBoolean, deserializeNumberList, getDefaultPlayerData, serializeBoolean, serializeNumberList } from "./utils";
 import { getPlayerRushEventEndlessBattleRankingSync } from "../lib/rush";
 
@@ -1597,6 +1597,116 @@ export function givePlayerItemSync(
         )
         return newAmount
     }
+}
+
+function buildPlayerMail(raw: RawPlayerMail): PlayerMail {
+    return {
+        id: raw.id,
+        playerId: raw.player_id,
+        type: raw.type,
+        typeId: raw.type_id,
+        number: raw.number,
+        reasonId: raw.reason_id,
+        subject: raw.subject,
+        description: raw.description,
+        createTime: new Date(raw.create_time),
+        receiveTime: raw.receive_time === null ? null : new Date(raw.receive_time),
+        rewardLimitTime: raw.reward_limit_time === null ? null : new Date(raw.reward_limit_time),
+        rewardPeriodLimited: deserializeBoolean(raw.reward_period_limited)
+    }
+}
+
+export function getPlayerMailsSync(
+    playerId: number,
+    offset: number = 0,
+    limit: number = 100
+): PlayerMail[] {
+    const rawMails = db.prepare(`
+    SELECT id, player_id, type, type_id, number, reason_id, subject, description,
+        create_time, receive_time, reward_limit_time, reward_period_limited
+    FROM players_mails
+    WHERE player_id = ? AND receive_time IS NULL
+    ORDER BY id DESC
+    LIMIT ?
+    OFFSET ?
+    `).all(playerId, limit, offset) as RawPlayerMail[]
+
+    return rawMails.map(buildPlayerMail)
+}
+
+export function getPlayerMailSync(
+    playerId: number,
+    mailId: number
+): PlayerMail | null {
+    const rawMail = db.prepare(`
+    SELECT id, player_id, type, type_id, number, reason_id, subject, description,
+        create_time, receive_time, reward_limit_time, reward_period_limited
+    FROM players_mails
+    WHERE player_id = ? AND id = ?
+    `).get(playerId, mailId) as RawPlayerMail | undefined
+
+    return rawMail === undefined ? null : buildPlayerMail(rawMail)
+}
+
+export function getPlayerUnreceivedMailCountSync(
+    playerId: number
+): number {
+    const row = db.prepare(`
+    SELECT COUNT(*) AS count
+    FROM players_mails
+    WHERE player_id = ? AND receive_time IS NULL
+    `).get(playerId) as { count: number }
+
+    return row.count
+}
+
+export function insertPlayerMailSync(
+    playerId: number,
+    input: {
+        type: number,
+        typeId?: number | null,
+        number: number,
+        reasonId?: number,
+        subject?: string | null,
+        description?: string | null,
+        createTime?: Date,
+        rewardLimitTime?: Date | null,
+        rewardPeriodLimited?: boolean
+    }
+): PlayerMail {
+    const createTime = input.createTime ?? new Date()
+    const result = db.prepare(`
+    INSERT INTO players_mails (
+        player_id, type, type_id, number, reason_id, subject, description,
+        create_time, receive_time, reward_limit_time, reward_period_limited
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)
+    `).run(
+        playerId,
+        input.type,
+        input.typeId ?? null,
+        input.number,
+        input.reasonId ?? 0,
+        input.subject ?? null,
+        input.description ?? null,
+        createTime.toISOString(),
+        input.rewardLimitTime?.toISOString() ?? null,
+        serializeBoolean(input.rewardPeriodLimited ?? false)
+    )
+
+    return getPlayerMailSync(playerId, Number(result.lastInsertRowid))!
+}
+
+export function markPlayerMailReceivedSync(
+    playerId: number,
+    mailId: number,
+    receiveTime: Date = new Date()
+) {
+    db.prepare(`
+    UPDATE players_mails
+    SET receive_time = ?
+    WHERE player_id = ? AND id = ?
+    `).run(receiveTime.toISOString(), playerId, mailId)
 }
 
 /**

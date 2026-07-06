@@ -51,8 +51,17 @@ export function getServerTimeZone(): string {
 }
 
 export function formatServerDateForTimeZone(date: Date = getServerDate()): string {
-    const timeZone = getServerTimeZone();
-    const parts = new Intl.DateTimeFormat("en-CA", {
+    const parts = getDateTimePartsForTimeZone(date, getServerTimeZone());
+    return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
+}
+
+export function formatServerDateInputForTimeZone(date: Date, timeZone: string = getServerTimeZone()): string {
+    const parts = getDateTimePartsForTimeZone(date, timeZone);
+    return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function getDateTimePartsForTimeZone(date: Date, timeZone: string): Record<string, string> {
+    return new Intl.DateTimeFormat("en-CA", {
         timeZone,
         year: "numeric",
         month: "2-digit",
@@ -60,13 +69,11 @@ export function formatServerDateForTimeZone(date: Date = getServerDate()): strin
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
-        hour12: false
+        hourCycle: "h23"
     }).formatToParts(date).reduce<Record<string, string>>((result, part) => {
         result[part.type] = part.value;
         return result;
     }, {});
-
-    return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
 }
 
 export function setServerTime(date: Date | null) {
@@ -247,7 +254,7 @@ function getTimePartsForTimeZone(date: Date): {
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
-        hour12: false
+        hourCycle: "h23"
     }).formatToParts(date).reduce<Record<string, string>>((result, part) => {
         result[part.type] = part.value;
         return result;
@@ -266,7 +273,18 @@ function getTimeZoneOffsetMinutes(
     localTime: { hour: number, minute: number, second: number, millisecond: number },
     timeZone: string
 ): number {
-    const utcGuess = new Date(`${localDate}T${String(localTime.hour).padStart(2, "0")}:${String(localTime.minute).padStart(2, "0")}:${String(localTime.second).padStart(2, "0")}.000Z`);
+    const dateParts = /^(\d{4})-(\d\d)-(\d\d)$/.exec(localDate);
+    if (dateParts === null) return 0;
+
+    const utcGuess = new Date(Date.UTC(
+        Number(dateParts[1]),
+        Number(dateParts[2]) - 1,
+        Number(dateParts[3]),
+        localTime.hour,
+        localTime.minute,
+        localTime.second,
+        localTime.millisecond
+    ));
     const zonedParts = new Intl.DateTimeFormat("en-CA", {
         timeZone,
         year: "numeric",
@@ -275,7 +293,7 @@ function getTimeZoneOffsetMinutes(
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
-        hour12: false
+        hourCycle: "h23"
     }).formatToParts(utcGuess).reduce<Record<string, string>>((result, part) => {
         result[part.type] = part.value;
         return result;

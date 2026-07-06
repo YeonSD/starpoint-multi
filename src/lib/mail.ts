@@ -60,7 +60,7 @@ export function serializeMail(mail: PlayerMail): SerializedMail {
         "id": mail.id,
         "number": mail.number,
         "reason_id": mail.reasonId,
-        "receive_time": mail.receiveTime === null ? "" : clientSerializeDate(mail.receiveTime),
+        "receive_time": clientSerializeDate(mail.receiveTime ?? mail.createTime),
         "reward_limit_time": mail.rewardLimitTime === null ? null : clientSerializeDate(mail.rewardLimitTime),
         "reward_period_limited": mail.rewardPeriodLimited,
         "subject": mail.subject,

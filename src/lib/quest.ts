@@ -69,7 +69,8 @@ export function givePlayerScoreRewardsSync(
                             expPool += rewardAmount
                             updatePlayerSync({
                                 id: playerId,
-                                expPool: (player?.expPool || 0) + rewardAmount
+                                expPool: (player?.expPool || 0) + rewardAmount,
+                                expPooledTime: new Date()
                             })
                             break;
                         }
@@ -236,7 +237,8 @@ export function givePlayerRewardsSync(
             id: playerId,
             freeVmoney: player.freeVmoney + vmoney,
             freeMana: player.freeMana + mana,
-            expPool: player.expPool + expPool
+            expPool: player.expPool + expPool,
+            ...(expPool > 0 ? { expPooledTime: new Date() } : {})
         })
     }
     

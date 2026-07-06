@@ -148,6 +148,7 @@ const routes = async (fastify: FastifyInstance) => {
 
         // calculate player rewards
         const newExpPool = playerData.expPool + questData.poolExpReward
+        const expPooledTime = new Date()
         const beforeRankPoint = playerData.rankPoint
         const newRankPoint = beforeRankPoint + questData.rankPointReward
         let newMana = playerData.freeMana + questData.manaReward + body.add_mana
@@ -190,6 +191,7 @@ const routes = async (fastify: FastifyInstance) => {
             id: playerId,
             freeMana: newMana,
             expPool: newExpPool,
+            expPooledTime,
             rankPoint: newRankPoint,
             boostPoint: newBoostPoint,
             bossBoostPoint: newBossBoostPoint
@@ -326,7 +328,7 @@ const routes = async (fastify: FastifyInstance) => {
                 "user_info": {
                     "free_mana": finalPlayerData.freeMana,
                     "exp_pool": finalPlayerData.expPool,
-                    "exp_pooled_time": getServerTime(finalPlayerData.expPooledTime),
+                    "exp_pooled_time": getServerTime(expPooledTime),
                     "free_vmoney": finalPlayerData.freeVmoney,
                     "rank_point": newRankPoint,
                     ...serializeInfiniteStamina(finalPlayerData),

@@ -92,11 +92,13 @@ const routes = async (fastify: FastifyInstance) => {
         const increaseItemCount = rarityStackConvertItemCount[rarity] * convertCount
 
         const afterExp = player.expPool + increaseExp
+        const expPooledTime = new Date()
 
         // update player
         updatePlayerSync({
             id: playerId,
-            expPool: afterExp
+            expPool: afterExp,
+            expPooledTime
         })
 
         // add item
@@ -110,7 +112,7 @@ const routes = async (fastify: FastifyInstance) => {
             "data": {
                 "user_info": {
                     "exp_pool": afterExp,
-                    "exp_pooled_time": getServerTime(player.expPooledTime)
+                    "exp_pooled_time": getServerTime(expPooledTime)
                 },
                 "character_list": [
                     {
@@ -177,11 +179,13 @@ const routes = async (fastify: FastifyInstance) => {
         })
         
         const playerAfterExpPool = player.expPool - addExp
+        const expPooledTime = new Date()
 
         // decrease player exp
         updatePlayerSync({
             id: playerId,
-            expPool: playerAfterExpPool
+            expPool: playerAfterExpPool,
+            expPooledTime
         })
 
         // add exp to the character
@@ -197,7 +201,7 @@ const routes = async (fastify: FastifyInstance) => {
                 "character_list": rewardResult.character_list,
                 "user_info": {
                     "exp_pool": rewardResult.exp_pool,
-                    "exp_pooled_time": getServerTime(player.expPooledTime)
+                    "exp_pooled_time": getServerTime(expPooledTime)
                 },
             }
         })

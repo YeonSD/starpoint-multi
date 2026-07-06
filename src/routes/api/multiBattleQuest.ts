@@ -974,10 +974,13 @@ const routes = async (fastify: FastifyInstance) => {
             }
         }
 
+        const expPooledTime = new Date()
+
         updatePlayerSync({
             id: playerId,
             freeMana: newMana,
             expPool: playerData.expPool + questData.poolExpReward,
+            expPooledTime,
             rankPoint: newRankPoint
         })
 
@@ -1011,7 +1014,7 @@ const routes = async (fastify: FastifyInstance) => {
                 "user_info": {
                     "free_mana": finalPlayerData.freeMana,
                     "exp_pool": finalPlayerData.expPool,
-                    "exp_pooled_time": getServerTime(finalPlayerData.expPooledTime),
+                    "exp_pooled_time": getServerTime(expPooledTime),
                     "free_vmoney": finalPlayerData.freeVmoney,
                     "rank_point": newRankPoint,
                     "max_stamina": finalPlayerData.stamina,

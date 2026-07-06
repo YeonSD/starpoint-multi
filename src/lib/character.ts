@@ -276,7 +276,8 @@ export function givePlayerCharactersExpSync(
     if (afterExpPool !== null && addToExpPool > 0) {
         updatePlayerSync({
             id: playerId,
-            expPool: afterExpPool
+            expPool: afterExpPool,
+            expPooledTime: new Date()
         })
     }
 

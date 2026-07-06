@@ -6,6 +6,7 @@ import { networkInterfaces } from "os";
 import { givePlayerCharactersExpSync } from "../../lib/character";
 import { getQuestFromCategorySync } from "../../lib/assets";
 import { givePlayerRewardSync, givePlayerScoreRewardsSync } from "../../lib/quest";
+import { serializeInfiniteStamina } from "../../lib/stamina";
 import { BattleQuest } from "../../lib/types";
 
 interface GetRoomsBody {
@@ -1014,8 +1015,7 @@ const routes = async (fastify: FastifyInstance) => {
                     "free_vmoney": finalPlayerData.freeVmoney,
                     "rank_point": newRankPoint,
                     "max_stamina": finalPlayerData.stamina,
-                    "stamina": finalPlayerData.stamina,
-                    "stamina_heal_time": getServerTime(finalPlayerData.staminaHealTime),
+                    ...serializeInfiniteStamina(finalPlayerData),
                     "boost_point": finalPlayerData.boostPoint,
                     "boss_boost_point": finalPlayerData.bossBoostPoint
                 },
@@ -1089,8 +1089,7 @@ const routes = async (fastify: FastifyInstance) => {
             "data_headers": dataHeaders,
             "data": {
                 "user_info": {
-                    "stamina": playerData?.stamina ?? 0,
-                    "stamina_heal_time": getServerTime(playerData?.staminaHealTime ?? new Date())
+                    ...serializeInfiniteStamina(playerData, 0)
                 },
                 "category_id": category,
                 "is_multi": "multi",

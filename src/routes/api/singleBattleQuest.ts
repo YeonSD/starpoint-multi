@@ -3,6 +3,7 @@ import { deletePlayerRushEventPlayedPartyListSync, getAccountPlayers, getPlayerR
 import { getQuestFromCategorySync, getRushEventFolderClearRewards } from "../../lib/assets";
 import { getCharactersEvolutionImgLevels, givePlayerCharactersExpSync } from "../../lib/character";
 import { givePlayerRewardsSync, givePlayerRewardSync, givePlayerScoreRewardsSync } from "../../lib/quest";
+import { serializeInfiniteStamina } from "../../lib/stamina";
 import { BattleQuest, EquipmentItemReward, PlayerRewardResult, QuestCategory } from "../../lib/types";
 import { generateDataHeaders, getServerTime } from "../../utils";
 import { rushEventFolderMaxRounds } from "./rushEvent";
@@ -328,8 +329,7 @@ const routes = async (fastify: FastifyInstance) => {
                     "exp_pooled_time": getServerTime(finalPlayerData.expPooledTime),
                     "free_vmoney": finalPlayerData.freeVmoney,
                     "rank_point": newRankPoint,
-                    "stamina": finalPlayerData.stamina,
-                    "stamina_heal_time": getServerTime(finalPlayerData.staminaHealTime),
+                    ...serializeInfiniteStamina(finalPlayerData),
                     "boost_point": newBoostPoint,
                     "boss_boost_point": newBossBoostPoint
                 },

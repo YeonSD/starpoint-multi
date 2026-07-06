@@ -1,4 +1,5 @@
 import { getCharacterDataSync } from "../lib/assets"
+import { serializeInfiniteStamina } from "../lib/stamina"
 import { getDateFromServerTime, getServerTime } from "../utils"
 import { ClientPlayerData, DailyChallengePointListEntry, MergedPlayerData, PartyCategory, Player, PlayerBoxGacha, PlayerCharacter, PlayerCharacterBondToken, PlayerDrawnQuest, PlayerEquipment, PlayerGachaCampaign, PlayerGachaInfo, PlayerMultiSpecialExchangeCampaign, PlayerParty, PlayerPartyGroup, PlayerQuestProgress, PlayerRushEvent, PlayerRushEventPlayedParty, PlayerStartDashExchangeCampaign, RushEventBattleType, UserBoxGacha, UserCharacter, UserCharacterBondTokenStatus, UserEquipment, UserGachaCampaign, UserPartyGroup, UserPartyGroupTeam, UserQuestProgress, UserRushEvent, UserRushEventPlayedParty, UserRushEventPlayedPartyList, UserTutorial } from "./types"
 
@@ -255,8 +256,7 @@ export function serializePlayerData(
 
     const clientData: ClientPlayerData = {
         "user_info": {
-            "stamina": playerData.stamina,
-            "stamina_heal_time": getServerTime(playerData.staminaHealTime),
+            ...serializeInfiniteStamina(playerData),
             "boost_point": playerData.boostPoint,
             "boss_boost_point": playerData.bossBoostPoint,
             "transition_state": playerData.transitionState,

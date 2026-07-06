@@ -28,7 +28,35 @@ interface BuyBody {
     viewer_id: number
 }
 
+interface RecoverStaminaBody {
+    viewer_id?: number
+}
+
 const routes = async (fastify: FastifyInstance) => {
+    fastify.post("/recover_stamina", async (request: FastifyRequest, reply: FastifyReply) => {
+        const body = request.body as RecoverStaminaBody
+        const viewerId = Number(body?.viewer_id)
+        let stamina = 20
+
+        if (!isNaN(viewerId)) {
+            const viewerIdSession = await getSession(viewerId.toString())
+            if (viewerIdSession !== undefined && viewerIdSession !== null) {
+                const playerIds = await getAccountPlayers(viewerIdSession.accountId)
+                const playerId = playerIds[0]
+                const player = isNaN(playerId) ? null : getPlayerSync(playerId)
+                stamina = player?.stamina ?? stamina
+            }
+        }
+
+        reply.header("content-type", "application/x-msgpack")
+        return reply.status(200).send({
+            "data_headers": generateDataHeaders({
+                viewer_id: isNaN(viewerId) ? undefined : viewerId
+            }),
+            "data": [0, stamina]
+        })
+    })
+
     fastify.post("/buy", async (request: FastifyRequest, reply: FastifyReply) => {
         const body = request.body as BuyBody
 

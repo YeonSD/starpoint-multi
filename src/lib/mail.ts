@@ -30,20 +30,18 @@ export enum MailKind {
     PERIODIC_REWARD_POINT = 13
 }
 
-type HaxeOption<T> = [0, T] | [1]
-
 export interface SerializedMail {
     create_time: string
-    description: HaxeOption<string>
+    description: string | null
     id: number
     number: number
     reason_id: number
     receive_time: string
-    reward_limit_time: HaxeOption<string>
+    reward_limit_time: string | null
     reward_period_limited: boolean
-    subject: HaxeOption<string>
+    subject: string | null
     type: number
-    type_id: HaxeOption<number>
+    type_id: number | null
 }
 
 export interface SendCurrencyMailResult {
@@ -58,16 +56,16 @@ export interface SendCurrencyMailResult {
 export function serializeMail(mail: PlayerMail): SerializedMail {
     return {
         "create_time": clientSerializeDate(mail.createTime),
-        "description": haxeOption(mail.description),
+        "description": mail.description,
         "id": mail.id,
         "number": mail.number,
         "reason_id": mail.reasonId,
         "receive_time": mail.receiveTime === null ? "" : clientSerializeDate(mail.receiveTime),
-        "reward_limit_time": haxeOption(mail.rewardLimitTime === null ? null : clientSerializeDate(mail.rewardLimitTime)),
+        "reward_limit_time": mail.rewardLimitTime === null ? null : clientSerializeDate(mail.rewardLimitTime),
         "reward_period_limited": mail.rewardPeriodLimited,
-        "subject": haxeOption(mail.subject),
+        "subject": mail.subject,
         "type": mail.type,
-        "type_id": haxeOption(mail.typeId)
+        "type_id": mail.typeId
     }
 }
 
@@ -253,8 +251,4 @@ function defaultCurrencySubject(currency: "free_vmoney" | "free_mana"): string {
 function defaultCurrencyDescription(currency: "free_vmoney" | "free_mana", amount: number): string {
     const name = currency === "free_vmoney" ? "lodestar beads" : "mana";
     return `You received ${amount} ${name}.`;
-}
-
-function haxeOption<T>(value: T | null | undefined): HaxeOption<T> {
-    return value === null || value === undefined ? [1] : [0, value];
 }

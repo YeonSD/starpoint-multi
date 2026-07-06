@@ -1,195 +1,195 @@
-# Starpoint Multi Development Plan
+# Starpoint Multi 개발 계획
 
-This document tracks the planned development order for turning Starpoint Multi into a usable private server package.
+이 문서는 Starpoint Multi를 실제 운영 가능한 개인 서버 패키지로 만들기 위한 개발 순서와 현재 상태를 정리한다.
 
-## Current Handoff Notes
+## 현재 인수인계 메모
 
-Use this section when another agent or developer continues the work.
+다른 개발자나 에이전트가 이어서 작업할 때 먼저 이 항목을 확인한다.
 
-Current stable baseline:
+현재 안정 기준:
 
-- The project is deployed with Docker on the Oracle VM and can serve the admin UI, WireGuard, DNS redirection, HTTP API, and realtime multiplayer stack.
-- The game client has not been patched. Do not modify APK, SWF, IL2CPP, or client binaries unless a future task explicitly changes this rule.
-- Multiplayer core behavior is partially restored: rooms can be created/joined, ready state works, battles can start, player action sync has worked in live tests, rewards are partially functional, and room return/disband handling has been improved.
-- Admin UI currently includes Dashboard, Players, Rooms, Items, and Source Code.
-- Direct item grants currently support `free_vmoney` and `free_mana`; direct grants may be negative but clamp balances at zero. Scheduled grants are positive-only.
-- `TZ` defaults to `Asia/Seoul` because the expected initial community is Korean. Operators may change it in `.env`.
+- 프로젝트는 Oracle VM에 Docker로 배포되어 있으며, 관리자 UI, WireGuard, DNS 리다이렉트, HTTP API, 실시간 멀티 서버 스택을 실행할 수 있다.
+- 게임 클라이언트는 패치하지 않았다. 추후 작업에서 명시적으로 변경하지 않는 한 APK, SWF, IL2CPP, 클라이언트 바이너리는 수정하지 않는다.
+- 멀티플레이 핵심 동작은 일부 복원되었다. 방 생성/입장, 준비 상태, 배틀 시작, 플레이어 행동 동기화가 실제 테스트에서 동작한 적이 있으며, 보상은 부분적으로 동작하고 룸 복귀/해산 처리도 개선되었다.
+- 관리자 UI에는 현재 Dashboard, Players, Rooms, Items, Source Code 탭이 있다.
+- 직접 아이템 지급은 현재 `free_vmoney`와 `free_mana`를 지원한다. 직접 지급은 음수도 가능하지만 최종 보유량은 0 미만으로 내려가지 않게 처리한다. 예약 지급은 양수만 허용한다.
+- `TZ` 기본값은 한국 커뮤니티 운영을 전제로 `Asia/Seoul`이다. 운영자는 `.env`에서 변경할 수 있다.
 
-Important unresolved issue:
+중요한 미해결 이슈:
 
-- `Live` server time mode currently causes a client login/load failure around 5% with `No.H500`.
-- Until this is analyzed, operate the game in `Fixed` mode for normal testing.
-- Do not build stamina, daily mission, or mail timestamp logic on top of `Live` mode until the H500 cause is found and fixed.
+- `Live` 서버 시간 모드는 현재 클라이언트 로그인/로드 중 약 5% 지점에서 `No.H500` 실패를 일으킨다.
+- 원인을 분석하기 전까지 일반 테스트와 운영은 `Fixed` 모드로 진행한다.
+- H500 원인이 확인되고 수정되기 전까지는 스태미나, 일일 미션, 메일 발송 시간 같은 기능을 `Live` 모드 위에 구현하지 않는다.
 
-First debugging target for `Live` mode:
+`Live` 모드의 첫 조사 대상:
 
-- Compare the last successful HTTP API calls in `Fixed` mode against the failing `Live` mode run.
-- Inspect `.database/server-time.json`, `/api/server/timeState`, and the `servertime` values in API responses.
-- Identify the exact endpoint that returns an error or malformed payload before `No.H500`.
-- Check whether the selected gacha date plus current local time falls outside an expected asset, campaign, banner, shop, agreement, tutorial, or login time range.
-- Preserve backwards compatibility with existing saved `fixed`, `live`, and legacy `date_override`/`ticking` server-time files.
+- `Fixed` 모드에서 마지막으로 성공한 HTTP API 흐름과 `Live` 모드에서 실패한 흐름을 비교한다.
+- `.database/server-time.json`, `/api/server/timeState`, API 응답의 `servertime` 값을 확인한다.
+- `No.H500` 직전에 어떤 엔드포인트가 에러를 반환하거나 잘못된 응답을 만드는지 특정한다.
+- 선택한 가챠 날짜와 현재 로컬 시간이 에셋, 캠페인, 배너, 상점, 약관, 튜토리얼, 로그인 상태가 기대하는 범위를 벗어나는지 확인한다.
+- 기존에 저장된 `fixed`, `live`, 과거 호환용 `date_override`/`ticking` 서버 시간 파일과의 호환성을 유지한다.
 
-Do not do this without evidence:
+증거 없이 하지 말 것:
 
-- Do not rewrite the multiplayer protocol just because a UI state looks wrong.
-- Do not add server-side bot AI before proving whether the client already has fallback AI.
-- Do not delete or regenerate `.database`, `.generated`, `.cdn`, or player state during feature work.
-- Do not commit logs, CDN files, keys, emulator artifacts, or private saves.
-- Do not assume mail, stamina, or mission response shapes. Capture real client requests first.
+- UI 상태가 이상하다는 이유만으로 멀티플레이 프로토콜을 다시 작성하지 않는다.
+- 클라이언트에 fallback AI가 있는지 검증하기 전에는 서버 측 봇 AI를 추가하지 않는다.
+- 기능 개발 중 `.database`, `.generated`, `.cdn`, 플레이어 상태를 삭제하거나 재생성하지 않는다.
+- 로그, CDN 파일, 키, 에뮬레이터 산출물, 개인 세이브 데이터를 커밋하지 않는다.
+- 메일, 스태미나, 미션 응답 구조를 추측하지 않는다. 먼저 실제 클라이언트 요청을 캡처한다.
 
-## Guiding Principles
+## 개발 원칙
 
-- Keep gameplay changes server-side whenever possible. Do not patch the game client unless there is no practical server-side route.
-- Prefer evidence from logs, client behavior, assets, and save data before implementing protocol or API behavior.
-- Keep operator-facing features simple enough to run on a small public cloud VM.
-- Protect private server state: `.cdn`, `.database`, `.generated`, logs, keys, and local device artifacts must not be committed.
+- 가능한 한 게임 변경은 서버 측에서 처리한다. 현실적인 서버 측 우회가 없을 때만 클라이언트 패치를 검토한다.
+- 프로토콜이나 API 동작을 구현하기 전에 로그, 클라이언트 동작, 에셋, 세이브 데이터에서 근거를 확보한다.
+- 운영자 기능은 작은 퍼블릭 클라우드 VM에서도 돌릴 수 있을 만큼 단순하게 유지한다.
+- 개인 서버 상태를 보호한다. `.cdn`, `.database`, `.generated`, 로그, 키, 로컬 디바이스 산출물은 커밋하지 않는다.
 
-## Phase 1: Server Time Modes
+## Phase 1: 서버 시간 모드
 
-Current status: server time was previously stored as one fixed timestamp. This is useful for selecting an old gacha period, but it does not support stamina recovery, daily missions, or other time-based systems.
+현재 상태: 서버 시간은 기존에 하나의 고정 시각으로 저장되었다. 이 방식은 과거 가챠 기간을 선택하기에는 안전하지만, 스태미나 회복, 일일 미션, 시간 기반 시스템에는 부족하다.
 
-Target behavior:
+목표 동작:
 
-- `Fixed`: freeze the game server at a selected timestamp. This is the default because it is safest for gacha and tutorial compatibility.
-- `Live`: use the selected gacha table date with the current server clock time in the configured `TZ` timezone.
-- The saved time mode is a core server setting. Future stamina, daily mission, and mail timestamp behavior should branch on `fixed` versus `live`.
+- `Fixed`: 게임 서버 시간을 선택한 특정 시각에 고정한다. 가챠와 튜토리얼 호환성이 가장 안전하므로 기본값으로 사용한다.
+- `Live`: 선택한 가챠 테이블의 날짜에, 서버의 현재 `TZ` 기준 시각을 결합한다.
+- 저장된 시간 모드는 핵심 서버 설정이다. 추후 스태미나, 일일 미션, 메일 발송 시간 처리는 `fixed`와 `live` 상태에 따라 분기해야 한다.
 
-Current blocker:
+현재 차단점:
 
-- `Live` mode has been implemented but is not yet safe for gameplay because it currently triggers `No.H500` during client load.
-- The next server-time task is investigation, not feature expansion.
-- Expected outcome of the investigation: either fix `Live` mode or document why only `Fixed` is supported until a deeper client/API dependency is implemented.
+- `Live` 모드는 구현되어 있지만, 클라이언트 로드 중 `No.H500`을 발생시키므로 아직 게임 플레이에 안전하지 않다.
+- 다음 서버 시간 작업은 기능 확장이 아니라 원인 조사다.
+- 조사 결과는 둘 중 하나여야 한다. `Live` 모드를 수정하거나, 더 깊은 클라이언트/API 의존성이 구현될 때까지 `Fixed`만 지원한다고 명확히 문서화한다.
 
-Admin UI:
+관리자 UI:
 
-- Show the current effective game server time.
-- Show the active time mode.
-- Allow selecting a gacha table and applying it as Fixed or Live time.
-- Warn operators that time mode changes can affect gacha, stamina, missions, shops, and login state. Recommend maintenance and client reconnects.
+- 현재 적용된 게임 서버 시간을 표시한다.
+- 현재 시간 모드를 표시한다.
+- 가챠 테이블을 선택하고 `Fixed` 또는 `Live` 시간으로 적용할 수 있게 한다.
+- 시간 모드 변경은 가챠, 스태미나, 미션, 상점, 로그인 상태에 영향을 줄 수 있음을 경고한다. 점검 시간과 클라이언트 재접속을 권장한다.
 
-## Phase 2: Item Catalog
+## Phase 2: 아이템 카탈로그
 
-Current status: direct grants support `free_vmoney` and `free_mana`, with scheduled grants for all players.
+현재 상태: 직접 지급은 `free_vmoney`, `free_mana`를 지원하며, 전체 유저 대상 예약 지급 기능이 있다.
 
-Target behavior:
+목표 동작:
 
-- Build a local item catalog from assets and CDN data.
-- Map item IDs to names, icons, categories, and safe grant rules.
-- Display searchable item names and icons in the admin UI.
-- Use the catalog as the basis for mail attachments and future reward systems.
+- 에셋과 CDN 데이터에서 로컬 아이템 카탈로그를 만든다.
+- 아이템 ID를 이름, 아이콘, 카테고리, 안전한 지급 규칙과 연결한다.
+- 관리자 UI에서 아이템 이름과 아이콘을 검색 가능하게 표시한다.
+- 이 카탈로그를 메일 첨부와 향후 보상 시스템의 기반으로 사용한다.
 
-Required evidence:
+필요한 근거:
 
-- CDN file layout after extraction.
-- Asset JSON tables that reference item names and icon resources.
-- Representative save files containing owned items and currencies.
+- 압축 해제된 CDN 파일 구조.
+- 아이템 이름과 아이콘 리소스를 참조하는 에셋 JSON 테이블.
+- 보유 아이템과 재화가 포함된 대표 세이브 파일.
 
-## Phase 3: Mail System Revival
+## Phase 3: 메일 시스템 부활
 
-Current status: the in-game mail screen opens, but no server-side mail implementation is active.
+현재 상태: 게임 내 메일 화면은 열리지만, 서버 측 메일 구현은 활성화되어 있지 않다.
 
-Target behavior:
+목표 동작:
 
-- Store mail records, recipients, attachments, read state, claim state, and expiration.
-- Let admins send text-only mail, item mail, or currency mail to one player, selected players, or all players.
-- Let clients list mail, claim one mail, and claim all mail from the original in-game UI.
+- 메일 기록, 수신자, 첨부 아이템, 읽음 상태, 수령 상태, 만료 시간을 저장한다.
+- 관리자가 텍스트 메일, 아이템 메일, 재화 메일을 한 명, 선택한 여러 명, 전체 유저에게 보낼 수 있게 한다.
+- 클라이언트가 기존 게임 UI에서 메일 목록 조회, 단일 수령, 일괄 수령을 할 수 있게 한다.
 
-Required evidence:
+필요한 근거:
 
-- HTTP logs for entering the mail tab.
-- HTTP logs for claim-all and single-claim actions.
-- Expected response structure for empty and non-empty mailboxes.
+- 메일 탭 진입 시 HTTP 로그.
+- 일괄 수령 및 단일 수령 액션의 HTTP 로그.
+- 빈 우편함과 메일이 있는 우편함의 기대 응답 구조.
 
-## Phase 4: Stamina System
+## Phase 4: 스태미나 시스템
 
-Current status: stamina behaves like a mostly fixed or effectively infinite value.
+현재 상태: 스태미나는 거의 고정값 또는 사실상 무한값처럼 동작한다.
 
-Target behavior:
+목표 동작:
 
-- Admin setting: infinite stamina or normal stamina.
-- Normal mode should support quest cost, natural recovery, recovery items, max stamina by rank, and full recovery on rank-up if the client expects it.
+- 관리자 설정으로 무한 스태미나 또는 정상 스태미나를 선택할 수 있게 한다.
+- 정상 모드는 퀘스트 소모량, 자연 회복, 회복 아이템, 랭크별 최대 스태미나, 랭크업 시 전체 회복을 지원해야 한다. 단, 클라이언트가 기대하는 방식이 확인된 후 구현한다.
 
-Dependencies:
+의존성:
 
-- Server time modes must be stable first.
-- Recovery item IDs and item-use APIs must be mapped.
+- 서버 시간 모드가 먼저 안정화되어야 한다.
+- 회복 아이템 ID와 아이템 사용 API를 매핑해야 한다.
 
-## Phase 5: Gacha Table UI Improvements
+## Phase 5: 가챠 테이블 UI 개선
 
-Current status: gacha table selection uses raw IDs and date ranges.
+현재 상태: 가챠 테이블 선택은 원시 ID와 날짜 범위만 보여준다.
 
-Target behavior:
+목표 동작:
 
-- Show friendly names, banners, pickup characters/equipment, and applicable dates.
-- Avoid relying only on dates because multiple tables can overlap.
-- Keep a manual override path for unknown tables.
+- 보기 좋은 이름, 배너, 픽업 캐릭터/장비, 적용 날짜를 표시한다.
+- 여러 테이블의 기간이 겹칠 수 있으므로 날짜만 믿지 않는다.
+- 알 수 없는 테이블을 위해 수동 선택 경로를 유지한다.
 
-Required evidence:
+필요한 근거:
 
 - `assets/gacha.json`
 - `assets/gacha_campaign.json`
-- CDN banner/resource mappings.
-- Client screenshots for selected gacha tables when useful.
+- CDN 배너/리소스 매핑.
+- 필요하면 특정 가챠 테이블의 클라이언트 스크린샷.
 
-## Phase 6: Missions
+## Phase 6: 미션
 
-Current status: mission tabs show no active missions.
+현재 상태: 미션 탭에는 활성 미션이 표시되지 않는다.
 
-Target behavior:
+목표 동작:
 
-- Start with a small daily mission set.
-- Track progress and claim rewards through the original mission UI.
-- Add admin controls for enabling daily missions and choosing simple rewards.
+- 작은 일일 미션 세트부터 시작한다.
+- 기존 미션 UI에서 진행도 추적과 보상 수령이 가능하게 한다.
+- 관리자가 일일 미션 활성화 여부와 간단한 보상을 선택할 수 있게 한다.
 
-Dependencies:
+의존성:
 
-- Server time modes.
-- Item catalog.
-- Reward delivery behavior, preferably through mail or a shared reward helper.
+- 서버 시간 모드.
+- 아이템 카탈로그.
+- 보상 지급 처리. 가능하면 메일 또는 공통 보상 헬퍼를 사용한다.
 
-## Phase 7: Distribution Cleanup
+## Phase 7: 배포 정리
 
-Target behavior:
+목표 동작:
 
-- Public repository contains only required source, deployment files, docs, and templates.
-- No CDN data, private keys, saves, logs, local emulator artifacts, or temporary analysis output.
-- README focuses on installation and operation:
+- 공개 레포에는 필요한 소스, 배포 파일, 문서, 템플릿만 남긴다.
+- CDN 데이터, 개인 키, 세이브, 로그, 로컬 에뮬레이터 산출물, 임시 분석 결과는 포함하지 않는다.
+- README는 설치와 운영에 집중한다.
   - clone
-  - create `.cdn`
-  - configure `.env`
+  - `.cdn` 생성
+  - `.env` 설정
   - `docker compose up -d`
-  - admin login
-  - WireGuard QR creation
-  - backup, update, and rollback
-- Include a clear non-commercial fan-project notice.
-- Keep update flow data-safe: `git pull` and `docker compose up -d --build` must not delete `.cdn`, `.database`, or `.generated`.
+  - 관리자 로그인
+  - WireGuard QR 생성
+  - 백업, 업데이트, 롤백
+- 비상업 팬 프로젝트라는 안내를 명확히 적는다.
+- 업데이트 흐름은 데이터를 보존해야 한다. `git pull` 및 `docker compose up -d --build`가 `.cdn`, `.database`, `.generated`를 삭제하면 안 된다.
 
-## Later Phase: Multiplayer Bot Fill
+## 이후 Phase: 멀티플레이 봇 채우기
 
-Priority: low. This is a convenience feature after the core multiplayer, reward, mail, stamina, and distribution work is stable.
+우선순위: 낮음. 핵심 멀티플레이, 보상, 메일, 스태미나, 배포 정리가 안정화된 뒤의 편의 기능이다.
 
-Observed clue:
+관찰된 단서:
 
-- In current multiplayer tests, when a real player disconnects during battle, the remaining client can continue with the disconnected party moving like a bot.
-- This suggests that the client already has some fallback behavior for disconnected multiplayer parties.
-- The original live game also appeared to fill a room with bot-controlled parties after a matchmaking timeout.
+- 현재 멀티 테스트에서 실제 플레이어가 배틀 중 연결이 끊기면, 남은 클라이언트에서 끊긴 파티가 봇처럼 움직이며 계속 진행되는 경우가 있었다.
+- 이는 클라이언트에 연결 끊김 파티를 처리하는 fallback 동작이 이미 있을 가능성을 시사한다.
+- 원래 라이브 게임에서도 매칭 타임아웃 후 봇 제어 파티가 방을 채우는 것처럼 보이는 동작이 있었다.
 
-Open question:
+열린 질문:
 
-- The bot fill may have been initiated by the real multiplayer server after a room timeout.
-- Alternatively, the server may only have sent a specific timeout/disconnect/fallback message and the client performed the bot behavior locally.
-- We should not implement server-side AI until this distinction is proven.
+- 봇 채우기는 원래 실시간 멀티 서버가 방 타임아웃 후 시작했을 수 있다.
+- 반대로 서버는 특정 타임아웃/연결 끊김/fallback 메시지만 보내고, 실제 봇 동작은 클라이언트가 로컬에서 수행했을 수도 있다.
+- 이 차이가 증명되기 전까지 서버 측 AI를 직접 구현하지 않는다.
 
-Recommended future experiment:
+나중에 할 실험:
 
-- Reintroduce a controlled room matchmaking timeout in a debug branch.
-- Add a fake participant to an underfilled room after the timeout.
-- Start battle, then either never connect that fake participant or immediately broadcast the same disconnect/bye pattern observed from a real dropped player.
-- Check whether the remaining client turns that party into a local bot without server-side movement packets.
+- 디버그 브랜치에서 통제된 방 매칭 타임아웃을 다시 도입한다.
+- 인원이 부족한 방에 타임아웃 후 가짜 참가자를 추가한다.
+- 배틀을 시작한 뒤 가짜 참가자는 접속하지 않게 하거나, 실제 유저가 끊겼을 때 관찰한 disconnect/bye 패턴을 즉시 브로드캐스트한다.
+- 남은 클라이언트가 서버 측 이동 패킷 없이 그 파티를 로컬 봇으로 전환하는지 확인한다.
 
-Potential implementation path:
+가능한 구현 방향:
 
-- Admin setting: bot fill on/off.
-- Admin setting: timeout duration before bot fill.
-- Bot party presets selected from safe built-in party data.
-- Prefer triggering the client fallback AI over writing a new realtime bot AI on the server.
+- 관리자 설정: 봇 채우기 on/off.
+- 관리자 설정: 봇 채우기 전 대기 시간.
+- 안전한 내장 파티 데이터에서 봇 파티 프리셋 선택.
+- 서버에서 새 실시간 봇 AI를 만드는 것보다 클라이언트 fallback AI를 유도하는 방식을 우선한다.

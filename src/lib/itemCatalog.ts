@@ -139,8 +139,12 @@ export const itemCatalogEntries: ItemCatalogEntry[] = [
 export function getItemCatalogEntries(): ItemCatalogEntry[] {
     return [...itemCatalogEntries].sort((a, b) => {
         if (a.kind !== b.kind) return a.kind === "currency" ? -1 : 1;
-        if (a.categoryKo !== b.categoryKo) return a.categoryKo.localeCompare(b.categoryKo);
-        return (a.screenOrder ?? Number.MAX_SAFE_INTEGER) - (b.screenOrder ?? Number.MAX_SAFE_INTEGER);
+        const groupA = a.kind === "item" && a.id !== null && a.id >= 40000 ? 2 : 1;
+        const groupB = b.kind === "item" && b.id !== null && b.id >= 40000 ? 2 : 1;
+        if (groupA !== groupB) return groupA - groupB;
+        const screenOrderDiff = (a.screenOrder ?? Number.MAX_SAFE_INTEGER) - (b.screenOrder ?? Number.MAX_SAFE_INTEGER);
+        if (screenOrderDiff !== 0) return screenOrderDiff;
+        return (a.id ?? 0) - (b.id ?? 0);
     });
 }
 

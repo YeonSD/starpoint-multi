@@ -9,7 +9,7 @@ import {
 } from "../data/wdfpData";
 import { Player, PlayerMail } from "../data/types";
 import { formatServerDateForTimeZone, getServerTime } from "../utils";
-import { getItemCatalogEntryByItemId } from "./itemCatalog";
+import { getItemCatalogEntryByItemId, resolveGrantItemId, resolveMailItemTypeId } from "./itemCatalog";
 import { givePlayerRewardsSync } from "./quest";
 import { serializeInfiniteStamina } from "./stamina";
 import { CurrencyReward, EquipmentItemReward, PlayerRewardResult, Reward, RewardType } from "./types";
@@ -125,6 +125,7 @@ export function sendItemMailToPlayers(
     description?: string
 ): SendItemMailResult[] {
     const catalogEntry = getItemCatalogEntryByItemId(itemId);
+    const mailTypeId = resolveMailItemTypeId(itemId);
 
     return playerIds.map((playerId) => {
         if (getPlayerSync(playerId) === null) {
@@ -137,7 +138,7 @@ export function sendItemMailToPlayers(
 
         const mail = insertPlayerMailSync(playerId, {
             type: MailType.ITEM,
-            typeId: itemId,
+            typeId: mailTypeId,
             number: amount,
             subject: subject ?? defaultItemSubject(itemId),
             description: description ?? defaultItemDescription(catalogEntry?.nameEn ?? catalogEntry?.nameKo ?? `item ${itemId}`, amount)
@@ -237,7 +238,7 @@ function mailToReward(mail: PlayerMail): Reward | null {
         case MailType.ITEM:
         case MailType.ITEM_REWARD:
             if (mail.typeId === null) return null;
-            return { type: RewardType.ITEM, id: mail.typeId, count: mail.number } as EquipmentItemReward;
+            return { type: RewardType.ITEM, id: resolveGrantItemId(mail.typeId), count: mail.number } as EquipmentItemReward;
         case MailType.FREE_VMONEY:
             return { type: RewardType.BEADS, count: mail.number } as CurrencyReward;
         case MailType.FREE_MANA:

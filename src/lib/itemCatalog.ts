@@ -281,3 +281,7 @@ export function getItemCatalogEntryByItemId(itemId: number): ItemCatalogEntry | 
 export function resolveGrantItemId(itemId: number): number {
     return bossCoinMasterIdToSaveId.get(itemId) ?? itemId;
 }
+
+export function resolveMailItemTypeId(itemId: number): number {
+    return bossCoinSaveIdToMasterId.get(itemId) ?? itemId;
+}

@@ -2,8 +2,9 @@ import { FastifyInstance, FastifyReply } from "fastify";
 import { readFileSync } from "fs";
 import path from "path";
 import { staticPagesDir } from ".";
-import { getAllPlayersSync } from "../../data/wdfpData";
+import { getAllPlayersSync, getPlayerItemsSync } from "../../data/wdfpData";
 import { listScheduledCurrencyGrants, ScheduledCurrencyGrant } from "../../lib/itemGrantSchedules";
+import { getItemCatalogEntries, ItemCatalogEntry } from "../../lib/itemCatalog";
 
 function escapeHtml(value: string | number): string {
     return value.toString()
@@ -66,6 +67,48 @@ function renderScheduleRows(schedules: ScheduledCurrencyGrant[]): string {
     `).join("");
 }
 
+function confidenceClass(confidence: ItemCatalogEntry["confidence"]): string {
+    if (confidence === "confirmed") return "bg-green-100 text-green-800";
+    if (confidence === "inferred") return "bg-yellow-100 text-yellow-800";
+    return "bg-surface-container-high text-on-surface-variant";
+}
+
+function renderCatalogRows(playerId: number | null): string {
+    const ownedItems = playerId === null ? {} : getPlayerItemsSync(playerId);
+    const entries = getItemCatalogEntries().filter((entry) => entry.kind === "item");
+
+    return entries.map((entry) => {
+        const amount = entry.id === null ? "-" : (ownedItems[String(entry.id)] ?? 0);
+        const iconContent = entry.iconPath
+            ? `<img src="${escapeHtml(entry.iconPath)}" class="w-12 h-12 object-contain image-render-pixel" alt="">`
+            : `<span class="text-xs text-on-surface-variant">No icon</span>`;
+
+        return `
+            <tr class="border-t border-outline-variant">
+                <td class="px-4 py-3">
+                    <div class="w-14 h-14 rounded-xl border border-outline-variant bg-surface-container flex items-center justify-center overflow-hidden">
+                        ${iconContent}
+                    </div>
+                </td>
+                <td class="px-4 py-3 tabular-nums font-bold">${escapeHtml(entry.id ?? "-")}</td>
+                <td class="px-4 py-3">
+                    <div class="font-bold">${escapeHtml(entry.nameKo)}</div>
+                    <div class="text-sm text-on-surface-variant">${escapeHtml(entry.nameEn)}</div>
+                </td>
+                <td class="px-4 py-3">${escapeHtml(entry.categoryKo)}</td>
+                <td class="px-4 py-3 tabular-nums">${escapeHtml(amount)}</td>
+                <td class="px-4 py-3 tabular-nums">${escapeHtml(entry.screenOrder ?? "-")}</td>
+                <td class="px-4 py-3">
+                    <span class="inline-flex px-3 py-1 rounded-full text-sm font-bold ${confidenceClass(entry.confidence)}">
+                        ${escapeHtml(entry.confidence)}
+                    </span>
+                </td>
+                <td class="px-4 py-3 text-sm text-on-surface-variant">${escapeHtml(entry.sources.join(", "))}</td>
+            </tr>
+        `;
+    }).join("");
+}
+
 const routes = async (fastify: FastifyInstance) => {
     fastify.get("/", async (_, reply: FastifyReply) => {
         let html = readFileSync(path.join(__dirname, staticPagesDir, "items.html")).toString("utf-8");
@@ -83,6 +126,27 @@ const routes = async (fastify: FastifyInstance) => {
             `).join("") || `<p class="text-on-surface-variant">No players found.</p>`)
             .replace("{{scheduleRows}}", renderScheduleRows(schedules))
             .replace("{{defaultFirstRun}}", formatDateTimeLocal(defaultFirstRun));
+
+        reply.header("content-type", "text/html; charset=utf-8");
+        reply.send(html);
+    });
+
+    fastify.get("/table", async (request, reply: FastifyReply) => {
+        const players = getAllPlayersSync();
+        const query = request.query as { player_id?: string };
+        const requestedPlayerId = Number.parseInt(query.player_id ?? "", 10);
+        const selectedPlayerId = Number.isFinite(requestedPlayerId)
+            ? requestedPlayerId
+            : (players[0]?.id ?? null);
+
+        let html = readFileSync(path.join(__dirname, staticPagesDir, "item_table.html")).toString("utf-8");
+        html = html
+            .replace("{{playerOptions}}", players.map((player) => `
+                <option value="${escapeHtml(player.id)}" ${player.id === selectedPlayerId ? "selected" : ""}>
+                    ${escapeHtml(player.name)} #${escapeHtml(player.id)}
+                </option>
+            `).join(""))
+            .replace("{{catalogRows}}", renderCatalogRows(selectedPlayerId));
 
         reply.header("content-type", "text/html; charset=utf-8");
         reply.send(html);

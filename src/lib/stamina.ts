@@ -7,8 +7,9 @@ export function serializeInfiniteStamina(
     playerData: Pick<Player, "stamina"> | null | undefined,
     fallbackStamina: number = 20
 ): SerializedStamina {
+    const stamina = Math.max(playerData?.stamina ?? fallbackStamina, fallbackStamina);
     return {
-        "stamina": playerData?.stamina ?? fallbackStamina,
+        "stamina": stamina,
         "stamina_heal_time": getServerTime()
     };
 }

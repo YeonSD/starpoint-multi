@@ -1092,7 +1092,7 @@ const routes = async (fastify: FastifyInstance) => {
             "data_headers": dataHeaders,
             "data": {
                 "user_info": {
-                    ...serializeInfiniteStamina(playerData, 0)
+                    ...serializeInfiniteStamina(playerData)
                 },
                 "category_id": category,
                 "is_multi": "multi",

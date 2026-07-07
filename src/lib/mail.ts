@@ -17,12 +17,19 @@ const UNRECEIVED_MAIL_TIME = "0000-00-00 00:00:00";
 
 export enum MailKind {
     ITEM = 0,
-    EQUIPMENT = 1,
+    PAID_VMONEY = 1,
     FREE_VMONEY = 2,
-    FREE_MANA = 3,
-    EXP = 4,
-    CHARACTER = 5,
-    DEGREE = 6
+    CHARACTER = 3,
+    EQUIPMENT = 4,
+    STAR_CRUMB = 5,
+    FREE_MANA = 6,
+    EXP = 7,
+    BOND_TOKEN = 8,
+    BOSS_BOOST_POINT = 9,
+    BOOST_POINT = 10,
+    DEGREE = 11,
+    DAILY_CHALLENGE_POINT = 12,
+    PERIODIC_REWARD_POINT = 13
 }
 
 export interface SerializedMail {

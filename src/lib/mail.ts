@@ -136,7 +136,7 @@ export function sendItemMailToPlayers(
         }
 
         const mail = insertPlayerMailSync(playerId, {
-            type: MailType.ITEM_REWARD,
+            type: MailType.ITEM,
             typeId: itemId,
             number: amount,
             subject: subject ?? defaultItemSubject(itemId),
@@ -153,7 +153,6 @@ export function sendItemMailToPlayers(
 }
 
 function serializeMailType(mail: PlayerMail): number {
-    if (mail.type === MailType.ITEM && mail.typeId !== null) return MailType.ITEM_REWARD;
     return mail.type;
 }
 

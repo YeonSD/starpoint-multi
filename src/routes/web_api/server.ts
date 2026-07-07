@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { formatServerDateForTimeZone, formatServerDateInputForTimeZone, getServerDate, getServerTimeSettings, getServerTimeZone, ServerTimeMode, setServerTime, setServerTimeSettings } from "../../utils";
+import { formatServerDateForTimeZone, getServerDate, getServerTimeSettings, getServerTimeZone, ServerTimeMode, setServerTime, setServerTimeSettings } from "../../utils";
 import { setAdminPassword, verifyAdminCredentials } from "../../lib/adminAuth";
 import { getGachaScheduleOption } from "../../lib/gachaSchedule";
 
@@ -89,7 +89,7 @@ const routes = async (fastify: FastifyInstance) => {
         } else {
             setServerTimeSettings({
                 mode: "live",
-                liveDate: formatServerDateInputForTimeZone(serverTime)
+                liveBaseTime: serverTime
             });
         }
         return reply.redirect(`/`);

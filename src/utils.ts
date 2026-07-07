@@ -8,6 +8,7 @@ export type ServerTimeMode = "fixed" | "live";
 export interface ServerTimeSettings {
     mode: ServerTimeMode
     fixedTime?: string
+    liveBaseTime?: string
     liveDate?: string
     updatedAt: string
 }
@@ -39,8 +40,18 @@ export function getServerDate(date: Date = new Date()): Date {
         return readValidDate(serverTimeSettings.fixedTime) ?? new Date(date);
     }
 
-    if (serverTimeSettings.mode === "live" && serverTimeSettings.liveDate !== undefined) {
-        return combineServerDateWithCurrentTime(serverTimeSettings.liveDate, date);
+    if (serverTimeSettings.mode === "live") {
+        const liveBaseTime = serverTimeSettings.liveBaseTime === undefined
+            ? null
+            : readValidDate(serverTimeSettings.liveBaseTime);
+        const updatedAt = readValidDate(serverTimeSettings.updatedAt);
+        if (liveBaseTime !== null && updatedAt !== null) {
+            return new Date(liveBaseTime.getTime() + (date.getTime() - updatedAt.getTime()));
+        }
+
+        if (serverTimeSettings.liveDate !== undefined) {
+            return combineServerDateWithCurrentTime(serverTimeSettings.liveDate, date);
+        }
     }
 
     return new Date(date)
@@ -99,6 +110,7 @@ export function getServerTimeSettings(): ServerTimeSettings {
 export function setServerTimeSettings(input: {
     mode: ServerTimeMode,
     fixedTime?: string | Date,
+    liveBaseTime?: string | Date,
     liveDate?: string
 }) {
     const now = new Date();
@@ -112,12 +124,11 @@ export function setServerTimeSettings(input: {
             updatedAt: now.toISOString()
         };
     } else {
-        if (input.liveDate === undefined || !/^\d{4}-\d\d-\d\d$/.test(input.liveDate)) {
-            throw new Error("Invalid live server date.");
-        }
+        const liveBaseTime = normalizeRequiredDate(input.liveBaseTime, "Invalid live server time.");
         settings = {
             mode: "live",
-            liveDate: input.liveDate,
+            liveBaseTime: liveBaseTime.toISOString(),
+            liveDate: formatServerDateInputForTimeZone(liveBaseTime),
             updatedAt: now.toISOString()
         };
     }
@@ -195,19 +206,34 @@ function migrateServerTimeSettings(value: unknown): ServerTimeSettings | null {
         };
     }
 
-    if (settings.mode === "live" && typeof settings.liveDate === "string" && typeof settings.updatedAt === "string") {
+    if (settings.mode === "live" && typeof settings.liveBaseTime === "string" && typeof settings.updatedAt === "string") {
         return {
             mode: "live",
+            liveBaseTime: settings.liveBaseTime,
+            liveDate: typeof settings.liveDate === "string"
+                ? settings.liveDate
+                : formatServerDateInputForTimeZone(new Date(settings.liveBaseTime)),
+            updatedAt: settings.updatedAt
+        };
+    }
+
+    if (settings.mode === "live" && typeof settings.liveDate === "string" && typeof settings.updatedAt === "string") {
+        const updatedAt = readValidDate(settings.updatedAt) ?? new Date();
+        return {
+            mode: "live",
+            liveBaseTime: combineServerDateWithCurrentTime(settings.liveDate, updatedAt).toISOString(),
             liveDate: settings.liveDate,
             updatedAt: settings.updatedAt
         };
     }
 
     if (settings.mode === "date_override" && typeof settings.overrideDate === "string") {
+        const updatedAt = typeof settings.updatedAt === "string" ? settings.updatedAt : new Date().toISOString();
         return {
             mode: "live",
+            liveBaseTime: combineServerDateWithCurrentTime(settings.overrideDate, readValidDate(updatedAt) ?? new Date()).toISOString(),
             liveDate: settings.overrideDate,
-            updatedAt: typeof settings.updatedAt === "string" ? settings.updatedAt : new Date().toISOString()
+            updatedAt
         };
     }
 
@@ -216,6 +242,7 @@ function migrateServerTimeSettings(value: unknown): ServerTimeSettings | null {
         if (baseServerTime !== null) {
             return {
                 mode: "live",
+                liveBaseTime: baseServerTime.toISOString(),
                 liveDate: baseServerTime.toISOString().slice(0, 10),
                 updatedAt: typeof settings.updatedAt === "string" ? settings.updatedAt : new Date().toISOString()
             };

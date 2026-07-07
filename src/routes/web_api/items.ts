@@ -5,6 +5,7 @@ import {
     getAllPlayerIdsForGrant,
     grantCurrencyToPlayers,
     isGrantCurrency,
+    isGrantTarget,
     isScheduledGrantInterval,
     listScheduledCurrencyGrants,
     runScheduledCurrencyGrantNow,
@@ -16,6 +17,7 @@ interface GrantCurrencyBody {
     target?: "selected" | "all",
     player_ids?: number[] | string[],
     currency?: unknown,
+    grant_key?: unknown,
     amount?: number | string,
     delivery?: "direct" | "mail",
     subject?: string,
@@ -24,6 +26,7 @@ interface GrantCurrencyBody {
 
 interface CreateScheduleBody {
     currency?: unknown,
+    grant_key?: unknown,
     amount?: number | string,
     interval?: unknown,
     next_run_at?: string,
@@ -52,15 +55,15 @@ const routes = async (fastify: FastifyInstance) => {
         const body = request.body as GrantCurrencyBody | undefined;
         const playerIds = normalizePlayerIds(body ?? {});
         const amount = Number(body?.amount);
-        const currency = body?.currency;
+        const currency = body?.grant_key ?? body?.currency;
         const delivery = body?.delivery === "direct" ? "direct" : "mail";
         const subject = normalizeOptionalText(body?.subject, 80);
         const description = normalizeOptionalText(body?.description, 300);
 
-        if (playerIds.length === 0 || !isGrantCurrency(currency) || !Number.isInteger(amount) || amount === 0) {
+        if (playerIds.length === 0 || !isGrantTarget(currency) || !Number.isInteger(amount) || amount === 0) {
             return reply.status(400).send({
                 "error": "Bad Request",
-                "message": "Select at least one player, a supported currency, and a non-zero amount."
+                "message": "Select at least one player, a supported grant target, and a non-zero amount."
             });
         }
 
@@ -84,7 +87,7 @@ const routes = async (fastify: FastifyInstance) => {
     fastify.post("/schedules", async (request: FastifyRequest, reply: FastifyReply) => {
         const body = request.body as CreateScheduleBody | undefined;
         const amount = Number(body?.amount);
-        const currency = body?.currency;
+        const currency = body?.grant_key ?? body?.currency;
         const interval = body?.interval;
         const subject = normalizeOptionalText(body?.subject, 80);
         const description = normalizeOptionalText(body?.description, 300);
@@ -92,10 +95,10 @@ const routes = async (fastify: FastifyInstance) => {
             ? undefined
             : new Date(body.next_run_at);
 
-        if (!isGrantCurrency(currency) || !isScheduledGrantInterval(interval) || !Number.isInteger(amount) || amount <= 0) {
+        if (!isGrantTarget(currency) || !isScheduledGrantInterval(interval) || !Number.isInteger(amount) || amount <= 0) {
             return reply.status(400).send({
                 "error": "Bad Request",
-                "message": "Select a supported currency, period, and positive amount."
+                "message": "Select a supported grant target, period, and positive amount."
             });
         }
 

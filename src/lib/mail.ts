@@ -8,6 +8,7 @@ import {
 } from "../data/wdfpData";
 import { Player, PlayerMail } from "../data/types";
 import { formatServerDateForTimeZone, getServerTime } from "../utils";
+import { getItemCatalogEntryByItemId } from "./itemCatalog";
 import { givePlayerRewardsSync } from "./quest";
 import { serializeInfiniteStamina } from "./stamina";
 import { CurrencyReward, EquipmentItemReward, PlayerRewardResult, Reward, RewardType } from "./types";
@@ -51,6 +52,16 @@ export interface SerializedMail {
 export interface SendCurrencyMailResult {
     player_id: number
     currency?: MailCurrency
+    item_id?: number
+    amount?: number
+    mail_id?: number
+    skipped?: boolean
+    reason?: string
+}
+
+export interface SendItemMailResult {
+    player_id: number
+    item_id?: number
     amount?: number
     mail_id?: number
     skipped?: boolean
@@ -99,6 +110,41 @@ export function sendCurrencyMailToPlayers(
         return {
             player_id: playerId,
             currency,
+            amount,
+            mail_id: mail.id
+        };
+    });
+}
+
+export function sendItemMailToPlayers(
+    playerIds: number[],
+    itemId: number,
+    amount: number,
+    subject?: string,
+    description?: string
+): SendItemMailResult[] {
+    const catalogEntry = getItemCatalogEntryByItemId(itemId);
+
+    return playerIds.map((playerId) => {
+        if (getPlayerSync(playerId) === null) {
+            return {
+                player_id: playerId,
+                skipped: true,
+                reason: "Player not found."
+            };
+        }
+
+        const mail = insertPlayerMailSync(playerId, {
+            type: MailType.ITEM,
+            typeId: itemId,
+            number: amount,
+            subject: subject ?? defaultItemSubject(itemId),
+            description: description ?? defaultItemDescription(catalogEntry?.nameEn ?? catalogEntry?.nameKo ?? `item ${itemId}`, amount)
+        });
+
+        return {
+            player_id: playerId,
+            item_id: itemId,
             amount,
             mail_id: mail.id
         };
@@ -267,5 +313,13 @@ function defaultCurrencyDescription(currency: MailCurrency, amount: number): str
         : currency === "free_mana"
             ? "mana"
             : "experience";
+    return `You received ${amount} ${name}.`;
+}
+
+function defaultItemSubject(itemId: number): string {
+    return getItemCatalogEntryByItemId(itemId)?.nameEn ?? `Item ${itemId}`;
+}
+
+function defaultItemDescription(name: string, amount: number): string {
     return `You received ${amount} ${name}.`;
 }

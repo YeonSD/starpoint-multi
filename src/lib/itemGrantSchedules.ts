@@ -1,15 +1,18 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
-import { getAllPlayersSync, getPlayerSync, updatePlayerSync } from "../data/wdfpData";
-import { MailCurrency, sendCurrencyMailToPlayers } from "./mail";
+import { getAllPlayersSync, getPlayerItemSync, getPlayerSync, givePlayerItemSync, updatePlayerItemSync, updatePlayerSync } from "../data/wdfpData";
+import { MailCurrency, sendCurrencyMailToPlayers, sendItemMailToPlayers } from "./mail";
 
 export type GrantCurrency = MailCurrency;
+export type GrantTarget = GrantCurrency | `item:${number}`;
 export type ScheduledGrantInterval = "daily" | "weekly" | "monthly";
 
 export interface CurrencyGrantResult {
     player_id: number
     currency?: GrantCurrency
+    item_id?: number
+    target?: GrantTarget
     amount?: number
     total?: number
     skipped?: boolean
@@ -20,7 +23,7 @@ export interface CurrencyGrantResult {
 
 export interface ScheduledCurrencyGrant {
     id: string
-    currency: GrantCurrency
+    currency: GrantTarget
     amount: number
     subject: string | null
     description: string | null
@@ -40,6 +43,19 @@ export function isGrantCurrency(value: unknown): value is GrantCurrency {
     return value === "free_vmoney" || value === "free_mana" || value === "exp_pool";
 }
 
+export function isGrantTarget(value: unknown): value is GrantTarget {
+    if (isGrantCurrency(value)) return true;
+    if (typeof value !== "string") return false;
+    const match = value.match(/^item:(\d+)$/);
+    return match !== null && Number.parseInt(match[1], 10) > 0;
+}
+
+export function grantTargetToItemId(target: GrantTarget): number | null {
+    if (!target.startsWith("item:")) return null;
+    const itemId = Number.parseInt(target.slice("item:".length), 10);
+    return Number.isInteger(itemId) && itemId > 0 ? itemId : null;
+}
+
 export function isScheduledGrantInterval(value: unknown): value is ScheduledGrantInterval {
     return value === "daily" || value === "weekly" || value === "monthly";
 }
@@ -50,9 +66,13 @@ export function getAllPlayerIdsForGrant(): number[] {
 
 export function grantCurrencyToPlayers(
     playerIds: number[],
-    currency: GrantCurrency,
+    currency: GrantTarget,
     amount: number
 ): CurrencyGrantResult[] {
+    const itemId = grantTargetToItemId(currency);
+    if (itemId !== null) return grantItemToPlayers(playerIds, itemId, amount);
+    if (!isGrantCurrency(currency)) return [];
+
     return playerIds.map((playerId) => {
         const player = getPlayerSync(playerId);
         if (player === null) {
@@ -78,6 +98,7 @@ export function grantCurrencyToPlayers(
         return {
             player_id: playerId,
             currency: currency,
+            target: currency,
             amount: amount,
             total: total,
             delivery: "direct"
@@ -85,15 +106,59 @@ export function grantCurrencyToPlayers(
     });
 }
 
+function grantItemToPlayers(
+    playerIds: number[],
+    itemId: number,
+    amount: number
+): CurrencyGrantResult[] {
+    return playerIds.map((playerId) => {
+        if (getPlayerSync(playerId) === null) {
+            return {
+                player_id: playerId,
+                skipped: true,
+                reason: "Player not found."
+            };
+        }
+
+        const owned = getPlayerItemSync(playerId, itemId) ?? 0;
+        const total = Math.max(0, owned + amount);
+        if (owned === 0 && total > 0) {
+            givePlayerItemSync(playerId, itemId, total);
+        } else {
+            updatePlayerItemSync(playerId, itemId, total);
+        }
+
+        return {
+            player_id: playerId,
+            item_id: itemId,
+            target: `item:${itemId}`,
+            amount,
+            total,
+            delivery: "direct"
+        };
+    });
+}
+
 export function sendCurrencyMailGrantToPlayers(
     playerIds: number[],
-    currency: GrantCurrency,
+    currency: GrantTarget,
     amount: number,
     subject?: string,
     description?: string
 ): CurrencyGrantResult[] {
+    const itemId = grantTargetToItemId(currency);
+    if (itemId !== null) {
+        return sendItemMailToPlayers(playerIds, itemId, amount, subject, description).map((entry) => ({
+            ...entry,
+            target: `item:${itemId}` as GrantTarget,
+            delivery: "mail"
+        }));
+    }
+    if (!isGrantCurrency(currency)) return [];
+
     return sendCurrencyMailToPlayers(playerIds, currency, amount, subject, description).map((entry) => ({
         ...entry,
+        target: currency,
         delivery: "mail"
     }));
 }
@@ -103,7 +168,7 @@ export function listScheduledCurrencyGrants(): ScheduledCurrencyGrant[] {
 }
 
 export function createScheduledCurrencyGrant(input: {
-    currency: GrantCurrency,
+    currency: GrantTarget,
     amount: number,
     interval: ScheduledGrantInterval,
     nextRunAt?: Date,
@@ -254,7 +319,7 @@ function isSchedule(value: unknown): value is ScheduledCurrencyGrant {
     if (typeof value !== "object" || value === null) return false;
     const schedule = value as Partial<ScheduledCurrencyGrant>;
     return typeof schedule.id === "string"
-        && isGrantCurrency(schedule.currency)
+        && isGrantTarget(schedule.currency)
         && typeof schedule.amount === "number"
         && Number.isInteger(schedule.amount)
         && schedule.amount > 0

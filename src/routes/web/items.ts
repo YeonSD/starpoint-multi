@@ -3,7 +3,7 @@ import { readFileSync } from "fs";
 import path from "path";
 import { staticPagesDir } from ".";
 import { getAllPlayersSync, getPlayerItemsSync } from "../../data/wdfpData";
-import { listScheduledCurrencyGrants, ScheduledCurrencyGrant } from "../../lib/itemGrantSchedules";
+import { grantTargetToItemId, listScheduledCurrencyGrants, ScheduledCurrencyGrant } from "../../lib/itemGrantSchedules";
 import { getItemCatalogEntries, ItemCatalogEntry } from "../../lib/itemCatalog";
 
 function escapeHtml(value: string | number): string {
@@ -27,10 +27,29 @@ function formatScheduleDate(value: string | null): string {
     return date.toLocaleString();
 }
 
-function scheduleCurrencyLabel(currency: ScheduledCurrencyGrant["currency"]): string {
-    if (currency === "free_vmoney") return "Lodestar Beads";
-    if (currency === "free_mana") return "Mana";
-    return "Experience";
+function grantTargetLabel(target: ScheduledCurrencyGrant["currency"]): string {
+    if (target === "free_vmoney") return "Lodestar Beads";
+    if (target === "free_mana") return "Mana";
+    if (target === "exp_pool") return "Experience";
+
+    const itemId = grantTargetToItemId(target);
+    const item = itemId === null ? undefined : getItemCatalogEntries().find((entry) => entry.kind === "item" && entry.id === itemId);
+    return item === undefined
+        ? `Item ${itemId ?? target}`
+        : `${item.nameKo} (${item.nameEn}, #${item.id})`;
+}
+
+function renderGrantOptions(): string {
+    return getItemCatalogEntries()
+        .filter((entry) => entry.kind === "currency" || entry.id !== null)
+        .map((entry) => {
+            const value = entry.kind === "currency" ? entry.key : `item:${entry.id}`;
+            const label = entry.kind === "currency"
+                ? `${entry.nameEn} (${entry.key})`
+                : `${entry.nameKo} / ${entry.nameEn} #${entry.id}`;
+            return `<option value="${escapeHtml(`${value} | ${label}`)}"></option>`;
+        })
+        .join("");
 }
 
 function renderScheduleRows(schedules: ScheduledCurrencyGrant[]): string {
@@ -40,7 +59,7 @@ function renderScheduleRows(schedules: ScheduledCurrencyGrant[]): string {
 
     return schedules.map((schedule) => `
         <tr class="border-t border-outline-variant">
-            <td class="px-4 py-3 font-semibold">${escapeHtml(scheduleCurrencyLabel(schedule.currency))}</td>
+            <td class="px-4 py-3 font-semibold">${escapeHtml(grantTargetLabel(schedule.currency))}</td>
             <td class="px-4 py-3">${escapeHtml(schedule.amount)}</td>
             <td class="px-4 py-3">${escapeHtml(schedule.subject ?? "-")}</td>
             <td class="px-4 py-3 capitalize">${escapeHtml(schedule.interval)}</td>
@@ -126,6 +145,7 @@ const routes = async (fastify: FastifyInstance) => {
                     <span class="text-on-surface-variant">#${player.id}</span>
                 </label>
             `).join("") || `<p class="text-on-surface-variant">No players found.</p>`)
+            .replace("{{grantOptions}}", renderGrantOptions())
             .replace("{{scheduleRows}}", renderScheduleRows(schedules))
             .replace("{{defaultFirstRun}}", formatDateTimeLocal(defaultFirstRun));
 

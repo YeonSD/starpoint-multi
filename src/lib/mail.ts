@@ -4,7 +4,8 @@ import {
     getPlayerSync,
     getPlayerUnreceivedMailCountSync,
     insertPlayerMailSync,
-    markPlayerMailReceivedSync
+    markPlayerMailReceivedSync,
+    updatePlayerSync
 } from "../data/wdfpData";
 import { Player, PlayerMail } from "../data/types";
 import { formatServerDateForTimeZone, getServerTime } from "../utils";
@@ -15,7 +16,7 @@ import { CurrencyReward, EquipmentItemReward, PlayerRewardResult, Reward, Reward
 
 const UNRECEIVED_MAIL_TIME = "0000-00-00 00:00:00";
 
-export type MailCurrency = "free_vmoney" | "free_mana" | "exp_pool";
+export type MailCurrency = "free_vmoney" | "free_mana" | "exp_pool" | "bond_token";
 
 export enum MailType {
     ITEM = 0,
@@ -170,8 +171,7 @@ export function receivePlayerMail(playerId: number, mailId: number) {
     const mail = getPlayerMailSync(playerId, mailId);
     if (mail === null || mail.receiveTime !== null) return null;
 
-    const reward = mailToReward(mail);
-    const rewardResult = reward === null ? emptyRewardResult() : givePlayerRewardsSync(playerId, [reward]);
+    const rewardResult = receiveMailReward(playerId, mail);
     if (rewardResult === null) return null;
 
     markPlayerMailReceivedSync(playerId, mailId);
@@ -189,8 +189,7 @@ export function receivePlayerMails(playerId: number, mailIds: number[]) {
         const mail = getPlayerMailSync(playerId, mailId);
         if (mail === null || mail.receiveTime !== null) continue;
 
-        const reward = mailToReward(mail);
-        const result = reward === null ? emptyRewardResult() : givePlayerRewardsSync(playerId, [reward]);
+        const result = receiveMailReward(playerId, mail);
         if (result === null) continue;
 
         rewardResult = mergeRewardResults(rewardResult, result);
@@ -209,6 +208,27 @@ export function receivePlayerMails(playerId: number, mailIds: number[]) {
         "max_overed_mail_count": 0,
         "outdated_mail_count": 0
     }
+}
+
+function receiveMailReward(playerId: number, mail: PlayerMail): PlayerRewardResult | null {
+    if (mail.type === MailType.BOND_TOKEN) {
+        return givePlayerBondTokenRewardSync(playerId, mail.number);
+    }
+
+    const reward = mailToReward(mail);
+    return reward === null ? emptyRewardResult() : givePlayerRewardsSync(playerId, [reward]);
+}
+
+function givePlayerBondTokenRewardSync(playerId: number, amount: number): PlayerRewardResult | null {
+    const player = getPlayerSync(playerId);
+    if (player === null) return null;
+
+    updatePlayerSync({
+        id: playerId,
+        bondToken: Math.max(0, player.bondToken + amount)
+    });
+
+    return emptyRewardResult();
 }
 
 function mailToReward(mail: PlayerMail): Reward | null {
@@ -303,12 +323,14 @@ function mergeRewardResults(left: PlayerRewardResult, right: PlayerRewardResult)
 function currencyToMailType(currency: MailCurrency): MailType {
     if (currency === "free_vmoney") return MailType.FREE_VMONEY;
     if (currency === "free_mana") return MailType.FREE_MANA;
+    if (currency === "bond_token") return MailType.BOND_TOKEN;
     return MailType.EXP;
 }
 
 function defaultCurrencySubject(currency: MailCurrency): string {
     if (currency === "free_vmoney") return "Lodestar Beads";
     if (currency === "free_mana") return "Mana";
+    if (currency === "bond_token") return "Bond Token";
     return "Experience";
 }
 
@@ -317,7 +339,9 @@ function defaultCurrencyDescription(currency: MailCurrency, amount: number): str
         ? "lodestar beads"
         : currency === "free_mana"
             ? "mana"
-            : "experience";
+            : currency === "bond_token"
+                ? "bond tokens"
+                : "experience";
     return `You received ${amount} ${name}.`;
 }
 

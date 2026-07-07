@@ -40,7 +40,7 @@ const schedulesPath = path.join(databaseDir, "item-grant-schedules.json");
 let runner: ReturnType<typeof setInterval> | null = null;
 
 export function isGrantCurrency(value: unknown): value is GrantCurrency {
-    return value === "free_vmoney" || value === "free_mana" || value === "exp_pool";
+    return value === "free_vmoney" || value === "free_mana" || value === "exp_pool" || value === "bond_token";
 }
 
 export function isGrantTarget(value: unknown): value is GrantTarget {
@@ -87,13 +87,17 @@ export function grantCurrencyToPlayers(
             ? player.freeVmoney + amount
             : currency === "free_mana"
                 ? player.freeMana + amount
-                : player.expPool + amount);
+                : currency === "bond_token"
+                    ? player.bondToken + amount
+                    : player.expPool + amount);
 
         updatePlayerSync(currency === "free_vmoney"
             ? { id: playerId, freeVmoney: total }
             : currency === "free_mana"
                 ? { id: playerId, freeMana: total }
-                : { id: playerId, expPool: total, expPooledTime: new Date() });
+                : currency === "bond_token"
+                    ? { id: playerId, bondToken: total }
+                    : { id: playerId, expPool: total, expPooledTime: new Date() });
 
         return {
             player_id: playerId,

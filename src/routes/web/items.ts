@@ -28,15 +28,18 @@ function formatScheduleDate(value: string | null): string {
 }
 
 function grantTargetLabel(target: ScheduledCurrencyGrant["currency"]): string {
-    if (target === "free_vmoney") return "Lodestar Beads";
-    if (target === "free_mana") return "Mana";
-    if (target === "exp_pool") return "Experience";
+    const currency = getItemCatalogEntries().find((entry) => entry.kind === "currency" && entry.key === target);
+    if (currency !== undefined) return formatCatalogLabel(currency);
 
     const itemId = grantTargetToItemId(target);
     const item = itemId === null ? undefined : getItemCatalogEntries().find((entry) => entry.kind === "item" && entry.id === itemId);
     return item === undefined
         ? `Item ${itemId ?? target}`
-        : `${item.nameKo} (${item.nameEn}, #${item.id})`;
+        : formatCatalogLabel(item);
+}
+
+function formatCatalogLabel(entry: ItemCatalogEntry): string {
+    return `${entry.nameKo} (${entry.nameEn})`;
 }
 
 function renderGrantOptions(): string {
@@ -44,9 +47,7 @@ function renderGrantOptions(): string {
         .filter((entry) => entry.kind === "currency" || entry.id !== null)
         .map((entry) => {
             const value = entry.kind === "currency" ? entry.key : `item:${entry.id}`;
-            const label = entry.kind === "currency"
-                ? `${entry.nameEn} (${entry.key})`
-                : `${entry.nameKo} / ${entry.nameEn} #${entry.id}`;
+            const label = formatCatalogLabel(entry);
             return `<option value="${escapeHtml(`${value} | ${label}`)}"></option>`;
         })
         .join("");
@@ -111,8 +112,7 @@ function renderCatalogRows(playerId: number | null): string {
                 </td>
                 <td class="px-4 py-3 tabular-nums font-bold">${escapeHtml(entry.id ?? "-")}</td>
                 <td class="px-4 py-3">
-                    <div class="font-bold">${escapeHtml(entry.nameKo)}</div>
-                    <div class="text-sm text-on-surface-variant">${escapeHtml(entry.nameEn)}</div>
+                    <div class="font-bold">${escapeHtml(formatCatalogLabel(entry))}</div>
                     ${entry.thumbnailId ? `<div class="text-xs text-on-surface-variant break-all mt-1">${escapeHtml(entry.thumbnailId)}</div>` : ""}
                     ${entry.descriptionKo ? `<div class="text-xs text-on-surface-variant mt-2 max-w-md">${escapeHtml(entry.descriptionKo)}</div>` : ""}
                 </td>

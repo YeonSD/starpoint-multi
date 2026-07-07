@@ -54,7 +54,8 @@ const itemScreenOrder = new Map<number, number>([
     [14004, 18], [14005, 19], [14006, 20], [14007, 21], [14008, 22],
     [14009, 23], [14010, 24], [14011, 25], [14012, 26], [14013, 27],
     [14014, 28], [14015, 29], [14016, 30], [14017, 31], [14018, 32],
-    [40000, 101], [40020, 102], [40050, 103], [40090, 104], [40110, 105]
+    [40000, 101], [40020, 102], [40050, 103], [40090, 104], [40110, 105],
+    [40130, 106], [40160, 107]
 ]);
 
 const knownSaveItemIds = [...itemScreenOrder.keys()];
@@ -130,8 +131,28 @@ const currencyEntries: ItemCatalogEntry[] = [
         categoryKo: "재화",
         confidence: "confirmed",
         sources: ["mail_receive_test", "save.json"]
+    },
+    {
+        key: "bond_token",
+        kind: "currency",
+        id: null,
+        nameKo: "인연의 증표",
+        nameEn: "Bond Token",
+        categoryKo: "재화",
+        confidence: "confirmed",
+        sources: ["save.json", "client_ui"]
     }
 ];
+
+const bossCoinSaveIdToMasterId = new Map<number, number>([
+    [40000, 592],
+    [40020, 597],
+    [40050, 602],
+    [40090, 607],
+    [40110, 612],
+    [40130, 617],
+    [40160, 622]
+]);
 
 function categoryLabel(entry: GeneratedItemMasterEntry): string {
     if (entry.group !== null && groupLabels[entry.group] !== undefined) {
@@ -187,15 +208,45 @@ function fallbackSaveItemEntry(id: number): ItemCatalogEntry {
     };
 }
 
+function manualSaveItemEntry(saveId: number, masterId: number): ItemCatalogEntry {
+    const masterEntry = itemMaster[String(masterId)];
+    if (masterEntry === undefined) return fallbackSaveItemEntry(saveId);
+
+    return {
+        key: `item:${saveId}`,
+        kind: "item",
+        id: saveId,
+        nameKo: masterEntry.nameKo,
+        nameEn: masterEntry.stringId ?? `Item ${saveId}`,
+        categoryKo: "보스 코인",
+        descriptionKo: masterEntry.descriptionKo ?? undefined,
+        thumbnailId: masterEntry.thumbnailId ?? undefined,
+        smallVectorIconId: masterEntry.smallVectorIconId ?? undefined,
+        screenOrder: itemScreenOrder.get(saveId),
+        confidence: "confirmed",
+        sources: [
+            `cdn item master:${masterId}`,
+            masterEntry.sourceEntry,
+            "save.json item_list",
+            "item_list_screen",
+            "manual save-id mapping"
+        ]
+    };
+}
+
 const generatedItemEntries = Object.values(itemMaster).map(generatedEntryToCatalogEntry);
 const generatedItemIds = new Set(generatedItemEntries.map((entry) => entry.id));
+const manualItemEntries = [...bossCoinSaveIdToMasterId.entries()]
+    .map(([saveId, masterId]) => manualSaveItemEntry(saveId, masterId));
+const manualItemIds = new Set(manualItemEntries.map((entry) => entry.id));
 const fallbackItemEntries = knownSaveItemIds
-    .filter((id) => !generatedItemIds.has(id))
+    .filter((id) => !generatedItemIds.has(id) && !manualItemIds.has(id))
     .map(fallbackSaveItemEntry);
 
 export const itemCatalogEntries: ItemCatalogEntry[] = [
     ...currencyEntries,
     ...generatedItemEntries,
+    ...manualItemEntries,
     ...fallbackItemEntries
 ];
 

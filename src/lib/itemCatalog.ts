@@ -1,3 +1,5 @@
+import itemMasterJson from "../../assets/item_master.generated.json";
+
 export type ItemCatalogKind = "currency" | "item";
 export type ItemCatalogConfidence = "confirmed" | "inferred" | "unknown";
 
@@ -11,12 +13,85 @@ export interface ItemCatalogEntry {
     descriptionKo?: string;
     usageKo?: string;
     iconPath?: string;
+    thumbnailId?: string;
+    smallVectorIconId?: string;
     screenOrder?: number;
     confidence: ItemCatalogConfidence;
     sources: string[];
 }
 
-export const itemCatalogEntries: ItemCatalogEntry[] = [
+interface GeneratedItemMasterEntry {
+    id: number;
+    stringId: string | null;
+    nameKo: string;
+    thumbnailId: string | null;
+    smallVectorIconId: string | null;
+    descriptionKo: string | null;
+    effectKind: number | null;
+    category: number | null;
+    group: number | null;
+    rarity: number | null;
+    maxCount: number | null;
+    sourceArchive: string;
+    sourceEntry: string;
+}
+
+const itemMaster = itemMasterJson as Record<string, GeneratedItemMasterEntry>;
+
+const itemScreenOrder = new Map<number, number>([
+    [1, 1], [2, 2], [3, 3], [5, 4], [6, 5],
+    [9, 6], [10, 7], [13, 8], [14, 9], [42, 10], [43, 11], [44, 12],
+    [46, 13], [47, 14], [14001, 15], [14002, 16], [14003, 17],
+    [14004, 18], [14005, 19], [14006, 20], [14007, 21], [14008, 22],
+    [14009, 23], [14010, 24], [14011, 25], [14012, 26], [14013, 27],
+    [14014, 28], [14015, 29], [14016, 30], [14017, 31], [14018, 32],
+    [40000, 101], [40020, 102], [40050, 103], [40090, 104], [40110, 105]
+]);
+
+const knownSaveItemIds = [...itemScreenOrder.keys()];
+
+const groupLabels: Record<number, string> = {
+    0: "퍼플 코인",
+    1: "골드 코인",
+    2: "실버 코인",
+    3: "퍼플 코인 조각",
+    4: "골드 코인 조각",
+    5: "실버 코인 조각",
+    6: "파성 결정",
+    7: "파성 결정 조각",
+    8: "에테르",
+    9: "속성 아이템",
+    10: "꿈꾸는 문장",
+    11: "크래프트 포인트",
+    12: "별의 가루"
+};
+
+const effectKindLabels: Record<number, string> = {
+    0: "육성 아이템",
+    1: "장비 강화",
+    2: "스태미나",
+    3: "스태미나",
+    4: "오버 리미트",
+    5: "오버 리미트 조각",
+    6: "장비 각성",
+    7: "장비 각성 조각",
+    8: "뽑기 티켓",
+    9: "이벤트 교환",
+    10: "입장 아이템",
+    11: "어빌리티 소울",
+    12: "특별 교환권",
+    13: "스타트 대시 교환권",
+    14: "기타",
+    15: "교환 아이템",
+    16: "크래프트 포인트",
+    17: "컨티뉴",
+    18: "퀘스트 해금",
+    19: "퀘스트 시작",
+    20: "별의 가루",
+    21: "EX 부스트"
+};
+
+const currencyEntries: ItemCatalogEntry[] = [
     {
         key: "free_vmoney",
         kind: "currency",
@@ -25,7 +100,7 @@ export const itemCatalogEntries: ItemCatalogEntry[] = [
         nameEn: "Lodestar Beads",
         categoryKo: "재화",
         confidence: "confirmed",
-        sources: ["mail_receive_test"]
+        sources: ["mail_receive_test", "save.json"]
     },
     {
         key: "free_mana",
@@ -35,7 +110,7 @@ export const itemCatalogEntries: ItemCatalogEntry[] = [
         nameEn: "Mana",
         categoryKo: "재화",
         confidence: "confirmed",
-        sources: ["mail_receive_test"]
+        sources: ["mail_receive_test", "save.json"]
     },
     {
         key: "exp_pool",
@@ -45,103 +120,78 @@ export const itemCatalogEntries: ItemCatalogEntry[] = [
         nameEn: "Experience",
         categoryKo: "재화",
         confidence: "confirmed",
-        sources: ["mail_receive_test"]
-    },
-    {
-        key: "item:1",
+        sources: ["mail_receive_test", "save.json"]
+    }
+];
+
+function categoryLabel(entry: GeneratedItemMasterEntry): string {
+    if (entry.group !== null && groupLabels[entry.group] !== undefined) {
+        return groupLabels[entry.group];
+    }
+    if (entry.effectKind !== null && effectKindLabels[entry.effectKind] !== undefined) {
+        return effectKindLabels[entry.effectKind];
+    }
+    if (entry.category !== null) {
+        return `카테고리 ${entry.category}`;
+    }
+    return "아이템";
+}
+
+function generatedEntryToCatalogEntry(entry: GeneratedItemMasterEntry): ItemCatalogEntry {
+    const sources = [
+        `cdn:${entry.sourceArchive}`,
+        entry.sourceEntry
+    ];
+
+    if (itemScreenOrder.has(entry.id)) {
+        sources.push("save.json item_list", "item_list_screen");
+    }
+
+    return {
+        key: `item:${entry.id}`,
         kind: "item",
-        id: 1,
-        nameKo: "불의 엘리먼트",
-        nameEn: "Fire Element",
-        categoryKo: "육성 아이템",
-        descriptionKo: "불 에너지가 응고되어 만들어진 작은 조각.",
-        usageKo: "주로 화속성 캐릭터의 어빌리티 습득에 사용합니다",
-        screenOrder: 1,
+        id: entry.id,
+        nameKo: entry.nameKo,
+        nameEn: entry.stringId ?? `Item ${entry.id}`,
+        categoryKo: categoryLabel(entry),
+        descriptionKo: entry.descriptionKo ?? undefined,
+        thumbnailId: entry.thumbnailId ?? undefined,
+        smallVectorIconId: entry.smallVectorIconId ?? undefined,
+        screenOrder: itemScreenOrder.get(entry.id),
         confidence: "confirmed",
-        sources: ["save.json item_list", "item_list_screen", "item_detail_screen"]
-    },
-    {
-        key: "item:2",
-        kind: "item",
-        id: 2,
-        nameKo: "불꽃의 엘리먼트",
-        nameEn: "Fire Element Cluster",
-        categoryKo: "육성 아이템",
-        screenOrder: 2,
-        confidence: "confirmed",
-        sources: ["save.json item_list", "item_list_screen"]
-    },
-    {
-        key: "item:3",
-        kind: "item",
-        id: 3,
-        nameKo: "열화의 엘리먼트",
-        nameEn: "Fire Element Core",
-        categoryKo: "육성 아이템",
-        screenOrder: 3,
-        confidence: "confirmed",
-        sources: ["save.json item_list", "item_list_screen"]
-    },
-    {
-        key: "item:5",
-        kind: "item",
-        id: 5,
-        nameKo: "물의 엘리먼트",
-        nameEn: "Water Element",
-        categoryKo: "육성 아이템",
-        screenOrder: 4,
-        confidence: "confirmed",
-        sources: ["save.json item_list", "item_list_screen"]
-    },
-    {
-        key: "item:6",
-        kind: "item",
-        id: 6,
-        nameKo: "청류의 엘리먼트",
-        nameEn: "Water Element Cluster",
-        categoryKo: "육성 아이템",
-        screenOrder: 5,
-        confidence: "confirmed",
-        sources: ["save.json item_list", "item_list_screen"]
-    },
-    ...[
-        [9, 6], [10, 7], [13, 8], [14, 9], [42, 10], [43, 11], [44, 12],
-        [46, 13], [47, 14], [14001, 15], [14002, 16], [14003, 17],
-        [14004, 18], [14005, 19], [14006, 20], [14007, 21], [14008, 22],
-        [14009, 23], [14010, 24], [14011, 25], [14012, 26], [14013, 27],
-        [14014, 28], [14015, 29], [14016, 30], [14017, 31], [14018, 32]
-    ].map(([id, screenOrder]) => ({
+        sources
+    };
+}
+
+function fallbackSaveItemEntry(id: number): ItemCatalogEntry {
+    return {
         key: `item:${id}`,
-        kind: "item" as const,
+        kind: "item",
         id,
-        nameKo: `미확인 아이템 ${id}`,
-        nameEn: `Unknown Item ${id}`,
-        categoryKo: "육성 아이템",
-        screenOrder,
-        confidence: "inferred" as const,
+        nameKo: id >= 40000 ? `미확인 교환용 아이템 ${id}` : `미확인 아이템 ${id}`,
+        nameEn: id >= 40000 ? `Unknown Exchange Item ${id}` : `Unknown Item ${id}`,
+        categoryKo: id >= 40000 ? "교환용 아이템" : "아이템",
+        screenOrder: itemScreenOrder.get(id),
+        confidence: "unknown",
         sources: ["save.json item_list", "item_list_screen"]
-    })),
-    ...[
-        [40000, 1], [40020, 2], [40050, 3], [40090, 4], [40110, 5]
-    ].map(([id, screenOrder]) => ({
-        key: `item:${id}`,
-        kind: "item" as const,
-        id,
-        nameKo: `미확인 교환용 아이템 ${id}`,
-        nameEn: `Unknown Exchange Item ${id}`,
-        categoryKo: "교환용 아이템",
-        screenOrder,
-        confidence: "inferred" as const,
-        sources: ["save.json item_list", "item_list_screen"]
-    }))
+    };
+}
+
+const generatedItemEntries = Object.values(itemMaster).map(generatedEntryToCatalogEntry);
+const generatedItemIds = new Set(generatedItemEntries.map((entry) => entry.id));
+const fallbackItemEntries = knownSaveItemIds
+    .filter((id) => !generatedItemIds.has(id))
+    .map(fallbackSaveItemEntry);
+
+export const itemCatalogEntries: ItemCatalogEntry[] = [
+    ...currencyEntries,
+    ...generatedItemEntries,
+    ...fallbackItemEntries
 ];
 
 export function getItemCatalogEntries(): ItemCatalogEntry[] {
     return [...itemCatalogEntries].sort((a, b) => {
         if (a.kind !== b.kind) return a.kind === "currency" ? -1 : 1;
-        const groupA = a.kind === "item" && a.id !== null && a.id >= 40000 ? 2 : 1;
-        const groupB = b.kind === "item" && b.id !== null && b.id >= 40000 ? 2 : 1;
-        if (groupA !== groupB) return groupA - groupB;
         const screenOrderDiff = (a.screenOrder ?? Number.MAX_SAFE_INTEGER) - (b.screenOrder ?? Number.MAX_SAFE_INTEGER);
         if (screenOrderDiff !== 0) return screenOrderDiff;
         return (a.id ?? 0) - (b.id ?? 0);

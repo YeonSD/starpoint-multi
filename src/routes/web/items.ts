@@ -94,6 +94,8 @@ function renderCatalogRows(playerId: number | null): string {
                 <td class="px-4 py-3">
                     <div class="font-bold">${escapeHtml(entry.nameKo)}</div>
                     <div class="text-sm text-on-surface-variant">${escapeHtml(entry.nameEn)}</div>
+                    ${entry.thumbnailId ? `<div class="text-xs text-on-surface-variant break-all mt-1">${escapeHtml(entry.thumbnailId)}</div>` : ""}
+                    ${entry.descriptionKo ? `<div class="text-xs text-on-surface-variant mt-2 max-w-md">${escapeHtml(entry.descriptionKo)}</div>` : ""}
                 </td>
                 <td class="px-4 py-3">${escapeHtml(entry.categoryKo)}</td>
                 <td class="px-4 py-3 tabular-nums">${escapeHtml(amount)}</td>

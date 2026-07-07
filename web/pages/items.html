@@ -117,27 +117,35 @@
                     <p id="schedule-status" class="text-on-surface-variant">Send currency mail to every current
                         player on a daily, weekly, or monthly schedule.</p>
                 </header>
-                <form id="schedule-form" class="grid md:grid-cols-[1fr_160px_160px_220px_auto] gap-3">
-                    <select name="currency" class="bg-surface-container rounded-2xl border border-outline-variant p-3"
-                        required>
-                        <option value="free_vmoney">Lodestar Beads</option>
-                        <option value="free_mana">Mana</option>
-                        <option value="exp_pool">Experience</option>
-                    </select>
-                    <input name="amount" type="number" min="1" value="1"
-                        class="bg-surface-container rounded-2xl border border-outline-variant p-3" required>
-                    <select name="interval" class="bg-surface-container rounded-2xl border border-outline-variant p-3"
-                        required>
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                        <option value="monthly">Monthly</option>
-                    </select>
-                    <input name="next_run_at" type="datetime-local" value="{{defaultFirstRun}}"
-                        class="bg-surface-container rounded-2xl border border-outline-variant p-3">
-                    <button type="submit"
-                        class="px-5 py-3 rounded-full bg-primary text-on-primary font-bold hover:opacity-90 transition-opacity">
-                        Add Schedule
-                    </button>
+                <form id="schedule-form" class="flex flex-col gap-3">
+                    <section class="grid md:grid-cols-[1fr_160px_160px_220px_auto] gap-3">
+                        <select name="currency" class="bg-surface-container rounded-2xl border border-outline-variant p-3"
+                            required>
+                            <option value="free_vmoney">Lodestar Beads</option>
+                            <option value="free_mana">Mana</option>
+                            <option value="exp_pool">Experience</option>
+                        </select>
+                        <input name="amount" type="number" min="1" value="1"
+                            class="bg-surface-container rounded-2xl border border-outline-variant p-3" required>
+                        <select name="interval" class="bg-surface-container rounded-2xl border border-outline-variant p-3"
+                            required>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
+                        <input name="next_run_at" type="datetime-local" value="{{defaultFirstRun}}"
+                            class="bg-surface-container rounded-2xl border border-outline-variant p-3">
+                        <button type="submit"
+                            class="px-5 py-3 rounded-full bg-primary text-on-primary font-bold hover:opacity-90 transition-opacity">
+                            Add Schedule
+                        </button>
+                    </section>
+                    <section class="grid md:grid-cols-2 gap-3">
+                        <input name="subject" type="text" maxlength="80" placeholder="Mail title (optional)"
+                            class="bg-surface-container rounded-2xl border border-outline-variant p-3">
+                        <input name="description" type="text" maxlength="300" placeholder="Mail message (optional)"
+                            class="bg-surface-container rounded-2xl border border-outline-variant p-3">
+                    </section>
                 </form>
                 <div class="overflow-x-auto border border-outline-variant rounded-2xl">
                     <table class="w-full text-left border-collapse">
@@ -145,6 +153,7 @@
                             <tr>
                                 <th class="px-4 py-3">Currency</th>
                                 <th class="px-4 py-3">Amount</th>
+                                <th class="px-4 py-3">Title</th>
                                 <th class="px-4 py-3">Period</th>
                                 <th class="px-4 py-3">Status</th>
                                 <th class="px-4 py-3">Next Run</th>
@@ -222,7 +231,9 @@
                 currency: form.currency.value,
                 amount: form.amount.value,
                 interval: form.interval.value,
-                next_run_at: form.next_run_at.value
+                next_run_at: form.next_run_at.value,
+                subject: form.subject.value,
+                description: form.description.value
             };
 
             const response = await fetch("/api/items/schedules", {

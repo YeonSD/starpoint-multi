@@ -26,7 +26,9 @@ interface CreateScheduleBody {
     currency?: unknown,
     amount?: number | string,
     interval?: unknown,
-    next_run_at?: string
+    next_run_at?: string,
+    subject?: string,
+    description?: string
 }
 
 function normalizePlayerIds(body: GrantCurrencyBody): number[] {
@@ -84,6 +86,8 @@ const routes = async (fastify: FastifyInstance) => {
         const amount = Number(body?.amount);
         const currency = body?.currency;
         const interval = body?.interval;
+        const subject = normalizeOptionalText(body?.subject, 80);
+        const description = normalizeOptionalText(body?.description, 300);
         const nextRunAt = body?.next_run_at === undefined || body.next_run_at.trim() === ""
             ? undefined
             : new Date(body.next_run_at);
@@ -106,7 +110,9 @@ const routes = async (fastify: FastifyInstance) => {
             currency,
             amount,
             interval,
-            nextRunAt
+            nextRunAt,
+            subject,
+            description
         });
 
         return reply.status(200).send({

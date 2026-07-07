@@ -22,6 +22,8 @@ export interface ScheduledCurrencyGrant {
     id: string
     currency: GrantCurrency
     amount: number
+    subject: string | null
+    description: string | null
     interval: ScheduledGrantInterval
     enabled: boolean
     createdAt: string
@@ -104,13 +106,17 @@ export function createScheduledCurrencyGrant(input: {
     currency: GrantCurrency,
     amount: number,
     interval: ScheduledGrantInterval,
-    nextRunAt?: Date
+    nextRunAt?: Date,
+    subject?: string,
+    description?: string
 }): ScheduledCurrencyGrant {
     const now = new Date();
     const schedule: ScheduledCurrencyGrant = {
         id: randomUUID(),
         currency: input.currency,
         amount: input.amount,
+        subject: input.subject ?? null,
+        description: input.description ?? null,
         interval: input.interval,
         enabled: true,
         createdAt: now.toISOString(),
@@ -190,7 +196,13 @@ export function startScheduledCurrencyGrantRunner() {
 }
 
 function executeSchedule(schedule: ScheduledCurrencyGrant, now: Date): CurrencyGrantResult[] {
-    const result = sendCurrencyMailGrantToPlayers(getAllPlayerIdsForGrant(), schedule.currency, schedule.amount);
+    const result = sendCurrencyMailGrantToPlayers(
+        getAllPlayerIdsForGrant(),
+        schedule.currency,
+        schedule.amount,
+        schedule.subject ?? undefined,
+        schedule.description ?? undefined
+    );
     schedule.lastRunAt = now.toISOString();
     schedule.lastResultCount = result.filter((entry) => entry.skipped !== true).length;
 
@@ -246,6 +258,8 @@ function isSchedule(value: unknown): value is ScheduledCurrencyGrant {
         && typeof schedule.amount === "number"
         && Number.isInteger(schedule.amount)
         && schedule.amount > 0
+        && (schedule.subject === undefined || schedule.subject === null || typeof schedule.subject === "string")
+        && (schedule.description === undefined || schedule.description === null || typeof schedule.description === "string")
         && isScheduledGrantInterval(schedule.interval)
         && typeof schedule.enabled === "boolean"
         && typeof schedule.createdAt === "string"

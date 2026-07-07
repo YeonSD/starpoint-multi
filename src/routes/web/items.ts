@@ -34,13 +34,14 @@ function scheduleCurrencyLabel(currency: ScheduledCurrencyGrant["currency"]): st
 
 function renderScheduleRows(schedules: ScheduledCurrencyGrant[]): string {
     if (schedules.length === 0) {
-        return `<tr><td colspan="7" class="px-4 py-5 text-on-surface-variant text-center">No scheduled grants.</td></tr>`;
+        return `<tr><td colspan="8" class="px-4 py-5 text-on-surface-variant text-center">No scheduled grants.</td></tr>`;
     }
 
     return schedules.map((schedule) => `
         <tr class="border-t border-outline-variant">
             <td class="px-4 py-3 font-semibold">${escapeHtml(scheduleCurrencyLabel(schedule.currency))}</td>
             <td class="px-4 py-3">${escapeHtml(schedule.amount)}</td>
+            <td class="px-4 py-3">${escapeHtml(schedule.subject ?? "-")}</td>
             <td class="px-4 py-3 capitalize">${escapeHtml(schedule.interval)}</td>
             <td class="px-4 py-3">${schedule.enabled ? "Enabled" : "Paused"}</td>
             <td class="px-4 py-3">${escapeHtml(formatScheduleDate(schedule.nextRunAt))}</td>

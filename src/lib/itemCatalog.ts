@@ -167,6 +167,10 @@ const bossCoinSaveIdToMasterId = new Map<number, number>([
 ]);
 const bossCoinMasterIdToSaveId = new Map([...bossCoinSaveIdToMasterId.entries()].map(([saveId, masterId]) => [masterId, saveId]));
 
+export function isBossCoinItemId(itemId: number): boolean {
+    return bossCoinSaveIdToMasterId.has(itemId) || bossCoinMasterIdToSaveId.has(itemId);
+}
+
 function categoryLabel(entry: GeneratedItemMasterEntry): string {
     if (entry.group !== null && groupLabels[entry.group] !== undefined) {
         return groupLabels[entry.group];

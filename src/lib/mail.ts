@@ -9,7 +9,7 @@ import {
 } from "../data/wdfpData";
 import { Player, PlayerMail } from "../data/types";
 import { formatServerDateForTimeZone, getServerTime } from "../utils";
-import { getItemCatalogEntryByItemId, resolveGrantItemId, resolveMailItemTypeId } from "./itemCatalog";
+import { getItemCatalogEntryByItemId, isBossCoinItemId, resolveGrantItemId, resolveMailItemTypeId } from "./itemCatalog";
 import { givePlayerRewardsSync } from "./quest";
 import { serializeInfiniteStamina } from "./stamina";
 import { CurrencyReward, EquipmentItemReward, PlayerRewardResult, Reward, RewardType } from "./types";
@@ -128,6 +128,16 @@ export function sendItemMailToPlayers(
     const mailTypeId = resolveMailItemTypeId(itemId);
 
     return playerIds.map((playerId) => {
+        if (isBossCoinItemId(itemId)) {
+            return {
+                player_id: playerId,
+                item_id: itemId,
+                amount,
+                skipped: true,
+                reason: "Boss coin mail is not supported yet. Use direct grant for this item."
+            };
+        }
+
         if (getPlayerSync(playerId) === null) {
             return {
                 player_id: playerId,

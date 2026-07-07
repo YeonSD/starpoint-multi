@@ -3,7 +3,7 @@ import { readFileSync } from "fs";
 import path from "path";
 import { staticPagesDir } from ".";
 import { getAllPlayersSync, getPlayerItemsSync } from "../../data/wdfpData";
-import { grantTargetToItemId, listScheduledCurrencyGrants, ScheduledCurrencyGrant } from "../../lib/itemGrantSchedules";
+import { listScheduledCurrencyGrants, ScheduledCurrencyGrant } from "../../lib/itemGrantSchedules";
 import { getItemCatalogEntries, ItemCatalogEntry } from "../../lib/itemCatalog";
 
 function escapeHtml(value: string | number): string {
@@ -31,11 +31,7 @@ function grantTargetLabel(target: ScheduledCurrencyGrant["currency"]): string {
     const currency = getItemCatalogEntries().find((entry) => entry.kind === "currency" && entry.key === target);
     if (currency !== undefined) return formatCatalogLabel(currency);
 
-    const itemId = grantTargetToItemId(target);
-    const item = itemId === null ? undefined : getItemCatalogEntries().find((entry) => entry.kind === "item" && entry.id === itemId);
-    return item === undefined
-        ? `Item ${itemId ?? target}`
-        : formatCatalogLabel(item);
+    return String(target);
 }
 
 function formatCatalogLabel(entry: ItemCatalogEntry): string {
@@ -44,11 +40,10 @@ function formatCatalogLabel(entry: ItemCatalogEntry): string {
 
 function renderGrantOptions(): string {
     return getItemCatalogEntries()
-        .filter((entry) => entry.kind === "currency" || entry.id !== null)
+        .filter((entry) => entry.kind === "currency" && (entry.key === "free_vmoney" || entry.key === "free_mana" || entry.key === "exp_pool"))
         .map((entry) => {
-            const value = entry.kind === "currency" ? entry.key : `item:${entry.id}`;
             const label = formatCatalogLabel(entry);
-            return `<option value="${escapeHtml(`${value} | ${label}`)}"></option>`;
+            return `<option value="${escapeHtml(`${entry.key} | ${label}`)}"></option>`;
         })
         .join("");
 }

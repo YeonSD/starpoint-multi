@@ -1,12 +1,23 @@
 import gachas from "../../assets/gacha.json";
+import gachaDisplayOverrides from "../../assets/gacha_display_overrides.json";
 import { Gacha, Gachas } from "./types";
 
 export interface GachaScheduleOption {
     id: string,
     label: string,
+    typeLabel: string,
+    title: string,
+    subtitle: string | null,
+    bannerPath: string | null,
     startDate: string,
     endDate: string,
     serverTime: string
+}
+
+interface GachaDisplayOverride {
+    titleKo?: string,
+    subtitleKo?: string,
+    bannerPath?: string | null
 }
 
 function parseAssetDate(value: string): Date {
@@ -27,9 +38,17 @@ export function getGachaScheduleOptions(): GachaScheduleOption[] {
         .map(([id, gacha]) => {
             const startDate = parseAssetDate(gacha.startDate);
             const serverTime = new Date(startDate.getTime() + 60 * 60 * 1000);
+            const typeLabel = getGachaTypeLabel(gacha);
+            const override = (gachaDisplayOverrides as Record<string, GachaDisplayOverride>)[id];
+            const title = override?.titleKo ?? `${typeLabel} Gacha ${id}`;
+            const subtitle = override?.subtitleKo ?? null;
             return {
                 id,
-                label: `${id} - ${getGachaTypeLabel(gacha)} (${gacha.startDate} to ${gacha.endDate})`,
+                label: `${title} (${typeLabel}, ${gacha.startDate} to ${gacha.endDate})`,
+                typeLabel,
+                title,
+                subtitle,
+                bannerPath: override?.bannerPath ?? null,
                 startDate: gacha.startDate,
                 endDate: gacha.endDate,
                 serverTime: formatInputDate(serverTime)

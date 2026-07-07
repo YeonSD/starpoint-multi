@@ -86,6 +86,21 @@
                         <option value="live" {{liveSelected}}>Live</option>
                     </select>
                 </section>
+                <section id="gacha-preview" class="w-full max-w-3xl overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-low">
+                    <img id="gacha-preview-banner" class="hidden w-full max-h-40 object-cover bg-surface-container-high" alt="">
+                    <div class="grid gap-2 p-4">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <strong id="gacha-preview-title" class="text-xl text-on-background"></strong>
+                            <span id="gacha-preview-type" class="rounded-full bg-primary px-3 py-1 text-sm font-bold text-on-primary"></span>
+                        </div>
+                        <p id="gacha-preview-subtitle" class="text-sm text-on-surface"></p>
+                        <p class="text-sm text-on-surface-variant">
+                            <span id="gacha-preview-start"></span>
+                            <span> - </span>
+                            <span id="gacha-preview-end"></span>
+                        </p>
+                    </div>
+                </section>
                 <p id="time-mode-description" class="max-w-3xl rounded-2xl border border-outline-variant bg-surface-container-low p-4 text-sm text-on-surface-variant"></p>
                 <p class="max-w-3xl text-sm text-on-surface-variant">
                     Changing server time can affect gacha availability, stamina recovery, missions, shops, and login state.
@@ -135,6 +150,28 @@
             document.getElementById("time-mode-description").textContent = timeModeDescriptions[select.value] || "";
         }
 
+        function updateGachaPreview() {
+            const option = document.getElementById("gacha_id").selectedOptions[0];
+            if (!option) return;
+
+            document.getElementById("gacha-preview-title").textContent = option.dataset.title || option.textContent;
+            document.getElementById("gacha-preview-type").textContent = option.dataset.type || "";
+            document.getElementById("gacha-preview-subtitle").textContent = option.dataset.subtitle || "No display metadata has been mapped yet.";
+            document.getElementById("gacha-preview-start").textContent = option.dataset.start || "";
+            document.getElementById("gacha-preview-end").textContent = option.dataset.end || "";
+
+            const banner = document.getElementById("gacha-preview-banner");
+            if (option.dataset.banner) {
+                banner.src = option.dataset.banner;
+                banner.alt = option.dataset.title || "";
+                banner.classList.remove("hidden");
+            } else {
+                banner.removeAttribute("src");
+                banner.alt = "";
+                banner.classList.add("hidden");
+            }
+        }
+
         async function refreshServerTime() {
             const response = await fetch("/api/server/timeState");
             if (!response.ok) return;
@@ -147,7 +184,9 @@
         }
 
         document.getElementById("time-mode-select").addEventListener("change", updateTimeModeDescription);
+        document.getElementById("gacha_id").addEventListener("change", updateGachaPreview);
         updateTimeModeDescription();
+        updateGachaPreview();
         setInterval(refreshServerTime, 1000);
 
         document.getElementById("admin-password-form").addEventListener("submit", async (event) => {

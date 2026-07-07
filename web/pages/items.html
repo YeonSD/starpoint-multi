@@ -66,13 +66,9 @@
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <div>
                             <h2 class="text-2xl font-bold text-on-background">Currency Management</h2>
-                            <p id="grant-status" class="text-on-surface-variant">Send currency or catalog items by
+                            <p id="grant-status" class="text-on-surface-variant">Send lodestar beads, mana, or experience by
                                 in-game mail, or apply the change directly to player saves.</p>
                         </div>
-                        <a href="/items/table"
-                            class="px-5 py-3 rounded-full border border-outline-variant hover:bg-surface-container-high">
-                            Item Table
-                        </a>
                     </div>
                 </header>
                 <form id="grant-form" class="flex flex-col gap-5">
@@ -93,7 +89,7 @@
                     </section>
                     <section class="grid md:grid-cols-[1fr_160px_160px_auto] gap-3">
                         <input name="grant_key" list="grant-options" value="free_vmoney | 성도석 (Lodestar Beads)"
-                            placeholder="Search currency or item name"
+                            placeholder="Search currency"
                             class="bg-surface-container rounded-2xl border border-outline-variant p-3" required>
                         <input name="amount" type="number" value="" placeholder="Amount, e.g. 1000 or -1000"
                             class="bg-surface-container rounded-2xl border border-outline-variant p-3" required>
@@ -119,13 +115,13 @@
                 class="w-full border border-outline-variant rounded-3xl p-5 bg-surface-container-lowest flex flex-col gap-5">
                 <header>
                     <h2 class="text-2xl font-bold text-on-background">Scheduled Grants</h2>
-                    <p id="schedule-status" class="text-on-surface-variant">Send currency or item mail to every current
+                    <p id="schedule-status" class="text-on-surface-variant">Send currency mail to every current
                         player on a daily, weekly, or monthly schedule.</p>
                 </header>
                 <form id="schedule-form" class="flex flex-col gap-3">
                     <section class="grid md:grid-cols-[1fr_160px_160px_220px_auto] gap-3">
                         <input name="grant_key" list="grant-options" value="free_vmoney | 성도석 (Lodestar Beads)"
-                            placeholder="Search currency or item name"
+                            placeholder="Search currency"
                             class="bg-surface-container rounded-2xl border border-outline-variant p-3" required>
                         <input name="amount" type="number" min="1" value="1"
                             class="bg-surface-container rounded-2xl border border-outline-variant p-3" required>

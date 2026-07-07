@@ -8,7 +8,7 @@ import roomsRoutePlugin from "./rooms";
 import itemsRoutePlugin from "./items";
 import sourceRoutePlugin from "./source";
 import { isDefaultAdminPasswordActive } from "../../lib/adminAuth";
-import { getGachaScheduleOptions } from "../../lib/gachaSchedule";
+import { GachaScheduleOption, getGachaScheduleOptions } from "../../lib/gachaSchedule";
 
 export const staticPagesDir = "../../../web/pages"
 
@@ -28,9 +28,7 @@ const routes = async (fastify: FastifyInstance) => {
         html = html.replace("{{serverTimeMode}}", serverTimeSettings.mode)
         html = html.replace("{{fixedSelected}}", serverTimeSettings.mode === "fixed" ? "selected" : "")
         html = html.replace("{{liveSelected}}", serverTimeSettings.mode === "live" ? "selected" : "")
-        html = html.replace("{{gachaOptions}}", gachaOptions.map((option) => `
-            <option value="${option.id}" ${option.id === "1" ? "selected" : ""}>${option.label}</option>
-        `).join(""))
+        html = html.replace("{{gachaOptions}}", gachaOptions.map((option) => renderGachaOption(option)).join(""))
         html = html.replace("{{adminPasswordNotice}}", isDefaultAdminPasswordActive()
             ? "Default admin password is active. Change it before exposing this server."
             : "Admin password has been changed.")
@@ -43,6 +41,27 @@ const routes = async (fastify: FastifyInstance) => {
     fastify.register(roomsRoutePlugin, { prefix: "/rooms" })
     fastify.register(itemsRoutePlugin, { prefix: "/items" })
     fastify.register(sourceRoutePlugin, { prefix: "/source" })
+}
+
+function renderGachaOption(option: GachaScheduleOption): string {
+    return `
+            <option value="${escapeHtml(option.id)}"
+                data-title="${escapeHtml(option.title)}"
+                data-subtitle="${escapeHtml(option.subtitle ?? "")}"
+                data-type="${escapeHtml(option.typeLabel)}"
+                data-start="${escapeHtml(option.startDate)}"
+                data-end="${escapeHtml(option.endDate)}"
+                data-banner="${escapeHtml(option.bannerPath ?? "")}"
+                ${option.id === "1" ? "selected" : ""}>${escapeHtml(option.label)}</option>
+        `;
+}
+
+function escapeHtml(value: string): string {
+    return value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
 }
 
 export default routes;

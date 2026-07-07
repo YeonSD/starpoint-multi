@@ -1,4 +1,3 @@
-import { clientSerializeDate } from "../data/utils";
 import {
     getPlayerMailSync,
     getPlayerMailsSync,
@@ -8,12 +7,14 @@ import {
     markPlayerMailReceivedSync
 } from "../data/wdfpData";
 import { Player, PlayerMail } from "../data/types";
-import { getServerTime } from "../utils";
+import { formatServerDateForTimeZone, getServerTime } from "../utils";
 import { givePlayerRewardsSync } from "./quest";
 import { serializeInfiniteStamina } from "./stamina";
 import { CurrencyReward, EquipmentItemReward, PlayerRewardResult, Reward, RewardType } from "./types";
 
 const UNRECEIVED_MAIL_TIME = "0000-00-00 00:00:00";
+
+export type MailCurrency = "free_vmoney" | "free_mana" | "exp_pool";
 
 export enum MailType {
     ITEM = 0,
@@ -49,7 +50,7 @@ export interface SerializedMail {
 
 export interface SendCurrencyMailResult {
     player_id: number
-    currency?: "free_vmoney" | "free_mana"
+    currency?: MailCurrency
     amount?: number
     mail_id?: number
     skipped?: boolean
@@ -58,13 +59,13 @@ export interface SendCurrencyMailResult {
 
 export function serializeMail(mail: PlayerMail): SerializedMail {
     return {
-        "create_time": clientSerializeDate(mail.createTime),
+        "create_time": formatServerDateForTimeZone(mail.createTime),
         "description": mail.description,
         "id": mail.id,
         "number": mail.number,
         "reason_id": mail.reasonId,
-        "receive_time": mail.receiveTime === null ? UNRECEIVED_MAIL_TIME : clientSerializeDate(mail.receiveTime),
-        "reward_limit_time": mail.rewardLimitTime === null ? null : clientSerializeDate(mail.rewardLimitTime),
+        "receive_time": mail.receiveTime === null ? UNRECEIVED_MAIL_TIME : formatServerDateForTimeZone(mail.receiveTime),
+        "reward_limit_time": mail.rewardLimitTime === null ? null : formatServerDateForTimeZone(mail.rewardLimitTime),
         "reward_period_limited": mail.rewardPeriodLimited,
         "subject": mail.subject,
         "type": mail.type,
@@ -74,7 +75,7 @@ export function serializeMail(mail: PlayerMail): SerializedMail {
 
 export function sendCurrencyMailToPlayers(
     playerIds: number[],
-    currency: "free_vmoney" | "free_mana",
+    currency: MailCurrency,
     amount: number,
     subject?: string,
     description?: string
@@ -89,7 +90,7 @@ export function sendCurrencyMailToPlayers(
         }
 
         const mail = insertPlayerMailSync(playerId, {
-            type: currency === "free_vmoney" ? MailType.FREE_VMONEY : MailType.FREE_MANA,
+            type: currencyToMailType(currency),
             number: amount,
             subject: subject ?? defaultCurrencySubject(currency),
             description: description ?? defaultCurrencyDescription(currency, amount)
@@ -248,11 +249,23 @@ function mergeRewardResults(left: PlayerRewardResult, right: PlayerRewardResult)
     }
 }
 
-function defaultCurrencySubject(currency: "free_vmoney" | "free_mana"): string {
-    return currency === "free_vmoney" ? "Lodestar Beads" : "Mana";
+function currencyToMailType(currency: MailCurrency): MailType {
+    if (currency === "free_vmoney") return MailType.FREE_VMONEY;
+    if (currency === "free_mana") return MailType.FREE_MANA;
+    return MailType.EXP;
 }
 
-function defaultCurrencyDescription(currency: "free_vmoney" | "free_mana", amount: number): string {
-    const name = currency === "free_vmoney" ? "lodestar beads" : "mana";
+function defaultCurrencySubject(currency: MailCurrency): string {
+    if (currency === "free_vmoney") return "Lodestar Beads";
+    if (currency === "free_mana") return "Mana";
+    return "Experience";
+}
+
+function defaultCurrencyDescription(currency: MailCurrency, amount: number): string {
+    const name = currency === "free_vmoney"
+        ? "lodestar beads"
+        : currency === "free_mana"
+            ? "mana"
+            : "experience";
     return `You received ${amount} ${name}.`;
 }

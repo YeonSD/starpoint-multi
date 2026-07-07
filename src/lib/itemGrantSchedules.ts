@@ -2,9 +2,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 import { getAllPlayersSync, getPlayerSync, updatePlayerSync } from "../data/wdfpData";
-import { sendCurrencyMailToPlayers } from "./mail";
+import { MailCurrency, sendCurrencyMailToPlayers } from "./mail";
 
-export type GrantCurrency = "free_vmoney" | "free_mana";
+export type GrantCurrency = MailCurrency;
 export type ScheduledGrantInterval = "daily" | "weekly" | "monthly";
 
 export interface CurrencyGrantResult {
@@ -35,7 +35,7 @@ const schedulesPath = path.join(databaseDir, "item-grant-schedules.json");
 let runner: ReturnType<typeof setInterval> | null = null;
 
 export function isGrantCurrency(value: unknown): value is GrantCurrency {
-    return value === "free_vmoney" || value === "free_mana";
+    return value === "free_vmoney" || value === "free_mana" || value === "exp_pool";
 }
 
 export function isScheduledGrantInterval(value: unknown): value is ScheduledGrantInterval {
@@ -63,11 +63,15 @@ export function grantCurrencyToPlayers(
 
         const total = Math.max(0, currency === "free_vmoney"
             ? player.freeVmoney + amount
-            : player.freeMana + amount);
+            : currency === "free_mana"
+                ? player.freeMana + amount
+                : player.expPool + amount);
 
         updatePlayerSync(currency === "free_vmoney"
             ? { id: playerId, freeVmoney: total }
-            : { id: playerId, freeMana: total });
+            : currency === "free_mana"
+                ? { id: playerId, freeMana: total }
+                : { id: playerId, expPool: total, expPooledTime: new Date() });
 
         return {
             player_id: playerId,
@@ -82,9 +86,11 @@ export function grantCurrencyToPlayers(
 export function sendCurrencyMailGrantToPlayers(
     playerIds: number[],
     currency: GrantCurrency,
-    amount: number
+    amount: number,
+    subject?: string,
+    description?: string
 ): CurrencyGrantResult[] {
-    return sendCurrencyMailToPlayers(playerIds, currency, amount).map((entry) => ({
+    return sendCurrencyMailToPlayers(playerIds, currency, amount, subject, description).map((entry) => ({
         ...entry,
         delivery: "mail"
     }));

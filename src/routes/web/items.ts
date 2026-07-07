@@ -27,7 +27,9 @@ function formatScheduleDate(value: string | null): string {
 }
 
 function scheduleCurrencyLabel(currency: ScheduledCurrencyGrant["currency"]): string {
-    return currency === "free_vmoney" ? "Lodestar Beads" : "Mana";
+    if (currency === "free_vmoney") return "Lodestar Beads";
+    if (currency === "free_mana") return "Mana";
+    return "Experience";
 }
 
 function renderScheduleRows(schedules: ScheduledCurrencyGrant[]): string {

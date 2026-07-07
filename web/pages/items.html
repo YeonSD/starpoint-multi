@@ -64,8 +64,8 @@
                 class="w-full border border-outline-variant rounded-3xl p-5 bg-surface-container-lowest flex flex-col gap-5">
                 <header>
                     <h2 class="text-2xl font-bold text-on-background">Currency Management</h2>
-                    <p id="grant-status" class="text-on-surface-variant">Send lodestar beads or mana by in-game mail,
-                        or apply the change directly to player saves.</p>
+                    <p id="grant-status" class="text-on-surface-variant">Send lodestar beads, mana, or experience by
+                        in-game mail, or apply the change directly to player saves.</p>
                 </header>
                 <form id="grant-form" class="flex flex-col gap-5">
                     <section class="flex flex-col gap-3">
@@ -88,6 +88,7 @@
                             required>
                             <option value="free_vmoney">Lodestar Beads (free_vmoney)</option>
                             <option value="free_mana">Mana (free_mana)</option>
+                            <option value="exp_pool">Experience (exp_pool)</option>
                         </select>
                         <input name="amount" type="number" value="" placeholder="Amount, e.g. 1000 or -1000"
                             class="bg-surface-container rounded-2xl border border-outline-variant p-3" required>
@@ -100,6 +101,12 @@
                             class="px-5 py-3 rounded-full bg-primary text-on-primary font-bold hover:opacity-90 transition-opacity">
                             Send
                         </button>
+                    </section>
+                    <section class="grid md:grid-cols-2 gap-3">
+                        <input name="subject" type="text" maxlength="80" placeholder="Mail title (optional)"
+                            class="bg-surface-container rounded-2xl border border-outline-variant p-3">
+                        <input name="description" type="text" maxlength="300" placeholder="Mail message (optional)"
+                            class="bg-surface-container rounded-2xl border border-outline-variant p-3">
                     </section>
                 </form>
             </section>
@@ -115,6 +122,7 @@
                         required>
                         <option value="free_vmoney">Lodestar Beads</option>
                         <option value="free_mana">Mana</option>
+                        <option value="exp_pool">Experience</option>
                     </select>
                     <input name="amount" type="number" min="1" value="1"
                         class="bg-surface-container rounded-2xl border border-outline-variant p-3" required>
@@ -163,7 +171,9 @@
                 player_ids: playerIds,
                 currency: form.currency.value,
                 amount: form.amount.value,
-                delivery: form.delivery.value
+                delivery: form.delivery.value,
+                subject: form.subject.value,
+                description: form.description.value
             };
 
             submit.disabled = true;

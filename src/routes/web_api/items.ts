@@ -17,7 +17,9 @@ interface GrantCurrencyBody {
     player_ids?: number[] | string[],
     currency?: unknown,
     amount?: number | string,
-    delivery?: "direct" | "mail"
+    delivery?: "direct" | "mail",
+    subject?: string,
+    description?: string
 }
 
 interface CreateScheduleBody {
@@ -49,6 +51,9 @@ const routes = async (fastify: FastifyInstance) => {
         const playerIds = normalizePlayerIds(body ?? {});
         const amount = Number(body?.amount);
         const currency = body?.currency;
+        const delivery = body?.delivery === "direct" ? "direct" : "mail";
+        const subject = normalizeOptionalText(body?.subject, 80);
+        const description = normalizeOptionalText(body?.description, 300);
 
         if (playerIds.length === 0 || !isGrantCurrency(currency) || !Number.isInteger(amount) || amount === 0) {
             return reply.status(400).send({
@@ -57,9 +62,16 @@ const routes = async (fastify: FastifyInstance) => {
             });
         }
 
-        const result = body?.delivery === "direct"
+        if (delivery === "mail" && amount <= 0) {
+            return reply.status(400).send({
+                "error": "Bad Request",
+                "message": "Mail grants must use a positive amount. Use Direct to remove currency."
+            });
+        }
+
+        const result = delivery === "direct"
             ? grantCurrencyToPlayers(playerIds, currency, amount)
-            : sendCurrencyMailGrantToPlayers(playerIds, currency, amount);
+            : sendCurrencyMailGrantToPlayers(playerIds, currency, amount, subject, description);
 
         return reply.status(200).send({
             "ok": true,
@@ -151,5 +163,11 @@ const routes = async (fastify: FastifyInstance) => {
         });
     });
 };
+
+function normalizeOptionalText(value: unknown, maxLength: number): string | undefined {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    return trimmed === "" ? undefined : trimmed.slice(0, maxLength);
+}
 
 export default routes;

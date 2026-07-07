@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 import { getAllPlayersSync, getPlayerItemSync, getPlayerSync, givePlayerItemSync, updatePlayerItemSync, updatePlayerSync } from "../data/wdfpData";
+import { resolveGrantItemId } from "./itemCatalog";
 import { MailCurrency, sendCurrencyMailToPlayers, sendItemMailToPlayers } from "./mail";
 
 export type GrantCurrency = MailCurrency;
@@ -53,7 +54,7 @@ export function isGrantTarget(value: unknown): value is GrantTarget {
 export function grantTargetToItemId(target: GrantTarget): number | null {
     if (!target.startsWith("item:")) return null;
     const itemId = Number.parseInt(target.slice("item:".length), 10);
-    return Number.isInteger(itemId) && itemId > 0 ? itemId : null;
+    return Number.isInteger(itemId) && itemId > 0 ? resolveGrantItemId(itemId) : null;
 }
 
 export function isScheduledGrantInterval(value: unknown): value is ScheduledGrantInterval {

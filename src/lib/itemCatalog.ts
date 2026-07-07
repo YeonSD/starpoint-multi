@@ -165,6 +165,7 @@ const bossCoinSaveIdToMasterId = new Map<number, number>([
     [40161, 787],
     [40162, 792]
 ]);
+const bossCoinMasterIdToSaveId = new Map([...bossCoinSaveIdToMasterId.entries()].map(([saveId, masterId]) => [masterId, saveId]));
 
 function categoryLabel(entry: GeneratedItemMasterEntry): string {
     if (entry.group !== null && groupLabels[entry.group] !== undefined) {
@@ -246,7 +247,9 @@ function manualSaveItemEntry(saveId: number, masterId: number): ItemCatalogEntry
     };
 }
 
-const generatedItemEntries = Object.values(itemMaster).map(generatedEntryToCatalogEntry);
+const generatedItemEntries = Object.values(itemMaster)
+    .filter((entry) => !bossCoinMasterIdToSaveId.has(entry.id))
+    .map(generatedEntryToCatalogEntry);
 const generatedItemIds = new Set(generatedItemEntries.map((entry) => entry.id));
 const manualItemEntries = [...bossCoinSaveIdToMasterId.entries()]
     .map(([saveId, masterId]) => manualSaveItemEntry(saveId, masterId));
@@ -273,4 +276,8 @@ export function getItemCatalogEntries(): ItemCatalogEntry[] {
 
 export function getItemCatalogEntryByItemId(itemId: number): ItemCatalogEntry | undefined {
     return itemCatalogEntries.find((entry) => entry.kind === "item" && entry.id === itemId);
+}
+
+export function resolveGrantItemId(itemId: number): number {
+    return bossCoinMasterIdToSaveId.get(itemId) ?? itemId;
 }

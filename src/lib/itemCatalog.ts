@@ -38,6 +38,15 @@ interface GeneratedItemMasterEntry {
 
 const itemMaster = itemMasterJson as Record<string, GeneratedItemMasterEntry>;
 
+function resolveSaveItemId(entry: GeneratedItemMasterEntry): number {
+    const abilityMaterialMatch = entry.stringId?.match(/^ability_material_(\d+)$/);
+    if (abilityMaterialMatch !== undefined && abilityMaterialMatch !== null) {
+        return Number.parseInt(abilityMaterialMatch[1], 10) + 1;
+    }
+
+    return entry.id;
+}
+
 const itemScreenOrder = new Map<number, number>([
     [1, 1], [2, 2], [3, 3], [5, 4], [6, 5],
     [9, 6], [10, 7], [13, 8], [14, 9], [42, 10], [43, 11], [44, 12],
@@ -138,26 +147,27 @@ function categoryLabel(entry: GeneratedItemMasterEntry): string {
 }
 
 function generatedEntryToCatalogEntry(entry: GeneratedItemMasterEntry): ItemCatalogEntry {
+    const itemId = resolveSaveItemId(entry);
     const sources = [
         `cdn:${entry.sourceArchive}`,
         entry.sourceEntry
     ];
 
-    if (itemScreenOrder.has(entry.id)) {
+    if (itemScreenOrder.has(itemId)) {
         sources.push("save.json item_list", "item_list_screen");
     }
 
     return {
-        key: `item:${entry.id}`,
+        key: `item:${itemId}`,
         kind: "item",
-        id: entry.id,
+        id: itemId,
         nameKo: entry.nameKo,
-        nameEn: entry.stringId ?? `Item ${entry.id}`,
+        nameEn: entry.stringId ?? `Item ${itemId}`,
         categoryKo: categoryLabel(entry),
         descriptionKo: entry.descriptionKo ?? undefined,
         thumbnailId: entry.thumbnailId ?? undefined,
         smallVectorIconId: entry.smallVectorIconId ?? undefined,
-        screenOrder: itemScreenOrder.get(entry.id),
+        screenOrder: itemScreenOrder.get(itemId),
         confidence: "confirmed",
         sources
     };

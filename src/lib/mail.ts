@@ -79,7 +79,7 @@ export function serializeMail(mail: PlayerMail): SerializedMail {
         "reward_limit_time": mail.rewardLimitTime === null ? null : formatServerDateForTimeZone(mail.rewardLimitTime),
         "reward_period_limited": mail.rewardPeriodLimited,
         "subject": mail.subject,
-        "type": mail.type,
+        "type": serializeMailType(mail),
         "type_id": mail.typeId
     }
 }
@@ -135,7 +135,7 @@ export function sendItemMailToPlayers(
         }
 
         const mail = insertPlayerMailSync(playerId, {
-            type: MailType.ITEM,
+            type: MailType.ITEM_REWARD,
             typeId: itemId,
             number: amount,
             subject: subject ?? defaultItemSubject(itemId),
@@ -149,6 +149,11 @@ export function sendItemMailToPlayers(
             mail_id: mail.id
         };
     });
+}
+
+function serializeMailType(mail: PlayerMail): number {
+    if (mail.type === MailType.ITEM && mail.typeId !== null) return MailType.ITEM_REWARD;
+    return mail.type;
 }
 
 export function listPlayerMailPage(playerId: number, currentPage: number = 1) {

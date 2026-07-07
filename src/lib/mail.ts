@@ -15,21 +15,22 @@ import { CurrencyReward, EquipmentItemReward, PlayerRewardResult, Reward, Reward
 
 const UNRECEIVED_MAIL_TIME = "0000-00-00 00:00:00";
 
-export enum MailKind {
+export enum MailType {
     ITEM = 0,
-    PAID_VMONEY = 1,
-    FREE_VMONEY = 2,
-    CHARACTER = 3,
-    EQUIPMENT = 4,
-    STAR_CRUMB = 5,
-    FREE_MANA = 6,
-    EXP = 7,
-    BOND_TOKEN = 8,
-    BOSS_BOOST_POINT = 9,
-    BOOST_POINT = 10,
-    DEGREE = 11,
-    DAILY_CHALLENGE_POINT = 12,
-    PERIODIC_REWARD_POINT = 13
+    ITEM_REWARD = 1,
+    PAID_VMONEY = 3,
+    FREE_VMONEY = 4,
+    CHARACTER = 5,
+    EQUIPMENT = 6,
+    STAR_CRUMB = 7,
+    FREE_MANA = 8,
+    EXP = 9,
+    BOND_TOKEN = 10,
+    BOSS_BOOST_POINT = 11,
+    BOOST_POINT = 12,
+    DEGREE = 13,
+    DAILY_CHALLENGE_POINT = 14,
+    PERIODIC_REWARD_POINT = 15
 }
 
 export interface SerializedMail {
@@ -88,7 +89,7 @@ export function sendCurrencyMailToPlayers(
         }
 
         const mail = insertPlayerMailSync(playerId, {
-            type: currency === "free_vmoney" ? MailKind.FREE_VMONEY : MailKind.FREE_MANA,
+            type: currency === "free_vmoney" ? MailType.FREE_VMONEY : MailType.FREE_MANA,
             number: amount,
             subject: subject ?? defaultCurrencySubject(currency),
             description: description ?? defaultCurrencyDescription(currency, amount)
@@ -162,14 +163,15 @@ function mailToReward(mail: PlayerMail): Reward | null {
     if (mail.number === 0) return null;
 
     switch (mail.type) {
-        case MailKind.ITEM:
+        case MailType.ITEM:
+        case MailType.ITEM_REWARD:
             if (mail.typeId === null) return null;
             return { type: RewardType.ITEM, id: mail.typeId, count: mail.number } as EquipmentItemReward;
-        case MailKind.FREE_VMONEY:
+        case MailType.FREE_VMONEY:
             return { type: RewardType.BEADS, count: mail.number } as CurrencyReward;
-        case MailKind.FREE_MANA:
+        case MailType.FREE_MANA:
             return { type: RewardType.MANA, count: mail.number } as CurrencyReward;
-        case MailKind.EXP:
+        case MailType.EXP:
             return { type: RewardType.EXP, count: mail.number } as CurrencyReward;
         default:
             return null;

@@ -95,13 +95,6 @@
                         </div>
                         <p id="gacha-preview-subtitle" class="text-sm text-on-surface"></p>
                         <p class="text-sm text-on-surface-variant">
-                            KR estimate:
-                            <span id="gacha-preview-kr-start"></span>
-                            <span> - </span>
-                            <span id="gacha-preview-kr-end"></span>
-                        </p>
-                        <p class="text-xs text-on-surface-variant">
-                            Internal game dates:
                             <span id="gacha-preview-start"></span>
                             <span> - </span>
                             <span id="gacha-preview-end"></span>
@@ -169,8 +162,6 @@
             document.getElementById("gacha-preview-subtitle").textContent = option.dataset.subtitle || "No display metadata has been mapped yet.";
             document.getElementById("gacha-preview-start").textContent = option.dataset.start || "";
             document.getElementById("gacha-preview-end").textContent = option.dataset.end || "";
-            document.getElementById("gacha-preview-kr-start").textContent = option.dataset.krStart || "";
-            document.getElementById("gacha-preview-kr-end").textContent = option.dataset.krEnd || "";
 
             const banner = document.getElementById("gacha-preview-banner");
             if (option.dataset.banner) {

@@ -59,8 +59,6 @@ function renderGachaOption(option: GachaScheduleOption): string {
                 data-type="${escapeHtml(option.typeLabel)}"
                 data-start="${escapeHtml(option.startDate)}"
                 data-end="${escapeHtml(option.endDate)}"
-                data-kr-start="${escapeHtml(option.krStartDate)}"
-                data-kr-end="${escapeHtml(option.krEndDate)}"
                 data-banner="${escapeHtml(option.bannerPath ?? "")}"
                 ${option.id === "1" ? "selected" : ""}>${escapeHtml(option.label)}</option>
         `;

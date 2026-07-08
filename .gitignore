@@ -16,6 +16,7 @@ rootca*.crt
 .generated/
 .logs/
 .analysis/
+.backup/
 .misc/
 .unzip-temp/
 .nox-apk/

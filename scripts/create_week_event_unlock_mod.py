@@ -91,7 +91,7 @@ def patch_week_event_groups(data: bytes, start_date: str) -> tuple[bytes, int]:
             continue
 
         fields = text.split(",")
-        should_patch = bool(fields) and fields[0].startswith("week_")
+        should_patch = bool(fields) and fields[0].startswith("week_") and fields[0].endswith("_campaign")
 
         if should_patch and len(fields) >= 17:
             fields[-3] = start_date

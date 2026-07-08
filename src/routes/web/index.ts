@@ -7,7 +7,6 @@ import { registerAdminAuth } from "./auth";
 import roomsRoutePlugin from "./rooms";
 import itemsRoutePlugin from "./items";
 import sourceRoutePlugin from "./source";
-import eventsRoutePlugin from "./events";
 import { isDefaultAdminPasswordActive } from "../../lib/adminAuth";
 import { GachaScheduleOption, getGachaScheduleOptions } from "../../lib/gachaSchedule";
 
@@ -48,7 +47,6 @@ const routes = async (fastify: FastifyInstance) => {
 
     fastify.register(playerRoutePlugin, { prefix: "/player" })
     fastify.register(roomsRoutePlugin, { prefix: "/rooms" })
-    fastify.register(eventsRoutePlugin, { prefix: "/events" })
     fastify.register(itemsRoutePlugin, { prefix: "/items" })
     fastify.register(sourceRoutePlugin, { prefix: "/source" })
 }

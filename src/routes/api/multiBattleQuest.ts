@@ -140,7 +140,8 @@ interface MultiRoom {
     hostEntryTime: number,
     invitationKey: string,
     status: "waiting" | "playing",
-    participants: Map<number, number>
+    participants: Map<number, number>,
+    sharedAt?: number
 }
 
 const rooms: Map<string, MultiRoom> = new Map()
@@ -201,6 +202,7 @@ function removeRoomParticipant(room: MultiRoom, viewerId: number): void {
 
 function resetRoomForNextRecruitment(room: MultiRoom): void {
     room.status = "waiting"
+    room.sharedAt = undefined
     room.participants.clear()
     room.participants.set(room.viewerId, room.playerId)
     for (const [viewerId, mappedRoom] of roomsByViewer.entries()) {
@@ -322,6 +324,51 @@ function serializeRoomSearchResult(request: FastifyRequest, room: MultiRoom) {
         "establisher_character": leaderCharacterId,
         "establisher_character_evolution_img_level": leaderCharacter?.evolutionLevel ?? 0
     }
+}
+
+function getEstablisherCharacter(room: MultiRoom) {
+    const establisher = getPlayerSync(room.playerId)
+    const leaderCharacterId = (establisher?.leaderCharacterId ?? 0) >= 100000
+        ? establisher!.leaderCharacterId
+        : 111003
+    const leaderCharacter = getPlayerCharacterSync(room.playerId, leaderCharacterId)
+
+    return {
+        player: establisher,
+        characterId: leaderCharacterId,
+        evolutionLevel: leaderCharacter?.evolutionLevel ?? 0
+    }
+}
+
+export function getAttentionMultiRecruitments(viewerId: number) {
+    return [...rooms.values()]
+        .filter((room) =>
+            room.sharedAt !== undefined
+            && room.status === "waiting"
+            && room.viewerId !== viewerId
+            && !room.participants.has(viewerId)
+            && room.participants.size < 3
+        )
+        .map((room) => {
+            const establisher = getEstablisherCharacter(room)
+            const establisherRank = establisher.player === null || establisher.player === undefined
+                ? 1
+                : Math.floor(establisher.player.rankPoint / 100) + 1
+
+            return {
+                "attention_key": room.invitationKey,
+                "quest_info": {
+                    "category_id": room.categoryId,
+                    "establisher_character": establisher.characterId,
+                    "establisher_character_evolution_img_level": establisher.evolutionLevel,
+                    "establisher_follow": 0,
+                    "establisher_rank": establisherRank,
+                    "host_entry_time": room.hostEntryTime,
+                    "quest_id": room.questId,
+                    "room_number": room.roomNumber
+                }
+            }
+        })
 }
 
 function serializeSearchRoomData(request: FastifyRequest, room: MultiRoom | undefined) {
@@ -730,6 +777,9 @@ const routes = async (fastify: FastifyInstance) => {
         const room = findRoomForBody(body)
         const roomNumber = room?.roomNumber ?? body.room_number
         const roomUrl = room ? buildInvitationUrl(request, room) : ""
+        if (room !== undefined) {
+            room.sharedAt = getServerTime()
+        }
 
         reply.header("content-type", "application/x-msgpack")
         return reply.status(200).send({

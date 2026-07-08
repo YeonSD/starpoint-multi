@@ -56,7 +56,18 @@ def patch_week_event_table(data: bytes, start_date: str) -> tuple[bytes, int]:
             fields[4] = start_date
             next_text = ",".join(fields)
             next_decoded = next_text.encode("utf-8")
-            compressed = zlib.compress(next_decoded)
+            original_size = end - start
+            compressed = None
+            for level in range(9, -1, -1):
+                candidate = zlib.compress(next_decoded, level)
+                if len(candidate) <= original_size:
+                    compressed = candidate + (b"\x00" * (original_size - len(candidate)))
+                    break
+            if compressed is None:
+                raise ValueError(
+                    f"Patched stream for quest {fields[0]} is larger than the original "
+                    f"({len(zlib.compress(next_decoded))} > {original_size})."
+                )
             patched_data.extend(data[cursor:start])
             patched_data.extend(compressed)
             cursor = end

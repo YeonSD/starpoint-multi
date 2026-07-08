@@ -11,6 +11,8 @@ export interface GachaScheduleOption {
     bannerPath: string | null,
     startDate: string,
     endDate: string,
+    krStartDate: string,
+    krEndDate: string,
     serverTime: string
 }
 
@@ -28,6 +30,10 @@ function formatInputDate(date: Date): string {
     return date.toISOString().replace(/\.\d\d\dZ$/, "");
 }
 
+function formatAssetDate(date: Date): string {
+    return date.toISOString().replace("T", " ").replace(/\.\d\d\dZ$/, "");
+}
+
 function getGachaTypeLabel(gacha: Gacha): string {
     return gacha.type === 0 ? "Unit" : "Armament";
 }
@@ -37,20 +43,25 @@ export function getGachaScheduleOptions(): GachaScheduleOption[] {
         .filter(([, gacha]) => gacha.startDate !== undefined && gacha.endDate !== undefined)
         .map(([id, gacha]) => {
             const startDate = parseAssetDate(gacha.startDate);
+            const endDate = parseAssetDate(gacha.endDate);
             const serverTime = new Date(startDate.getTime() + 60 * 60 * 1000);
+            const krStartDate = new Date(startDate.getTime() + 46 * 24 * 60 * 60 * 1000);
+            const krEndDate = new Date(endDate.getTime() + 46 * 24 * 60 * 60 * 1000);
             const typeLabel = getGachaTypeLabel(gacha);
             const override = (gachaDisplayOverrides as Record<string, GachaDisplayOverride>)[id];
             const title = override?.titleKo ?? `${typeLabel} Gacha ${id}`;
             const subtitle = override?.subtitleKo ?? null;
             return {
                 id,
-                label: `${title} (${typeLabel}, ${gacha.startDate} to ${gacha.endDate})`,
+                label: `${title} (${typeLabel}, KR ${formatAssetDate(krStartDate)} to ${formatAssetDate(krEndDate)})`,
                 typeLabel,
                 title,
                 subtitle,
                 bannerPath: override?.bannerPath ?? null,
                 startDate: gacha.startDate,
                 endDate: gacha.endDate,
+                krStartDate: formatAssetDate(krStartDate),
+                krEndDate: formatAssetDate(krEndDate),
                 serverTime: formatInputDate(serverTime)
             };
         })

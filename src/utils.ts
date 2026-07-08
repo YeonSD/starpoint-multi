@@ -71,6 +71,10 @@ export function formatServerDateInputForTimeZone(date: Date, timeZone: string = 
     return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
+export function combineServerDateWithCurrentWallTime(serverDate: Date, now: Date = new Date()): Date {
+    return combineServerDateWithCurrentTime(formatServerDateInputForTimeZone(serverDate), now);
+}
+
 function getDateTimePartsForTimeZone(date: Date, timeZone: string): Record<string, string> {
     return new Intl.DateTimeFormat("en-CA", {
         timeZone,

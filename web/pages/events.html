@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/public/tailwind.css">
+    <title>Starpoint - Events</title>
+</head>
+
+<body
+    class="bg-background text-on-surface relative mt-16 m-auto max-w-screen-2xl min-h-screen box-border flex flex-col items-start px-3 pb-3">
+    <header class="flex gap-3 items-center md:justify-start justify-center mb-3 w-full">
+        <img src="/public/img/logo.png" class="w-9 h-9">
+        <h1 class="text-4xl mt-4 font-black mb-4 text-on-background text-left">Starpoint</h1>
+    </header>
+    <div class="md:grid md:grid-cols-sidebar flex flex-col gap-5 w-full h-fit">
+        <nav class="px-3 py-5 gap-3 flex flex-col bg-surface-container-low rounded-3xl h-fit w-full">
+            <a href="/" class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">Dashboard</a>
+            <a href="/player" class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">Players</a>
+            <a href="/rooms" class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">Rooms</a>
+            <div class="px-5 py-3 flex gap-3 items-center bg-primary rounded-full w-full font-bold text-on-primary text-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
+                    class="fill-on-primary">
+                    <path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Z" />
+                </svg>
+                Events
+            </div>
+            <a href="/items" class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">Items</a>
+            <a href="/source" class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">Source Code</a>
+        </nav>
+        <main class="w-full flex flex-col gap-5">
+            <section class="w-full border border-outline-variant rounded-3xl p-5 bg-surface-container-lowest flex flex-col gap-5">
+                <header class="flex flex-col gap-2">
+                    <h2 class="text-2xl font-bold text-on-background">Event Groups</h2>
+                    <p class="text-on-surface-variant">
+                        Event group rows extracted from CDN master data. Logical banner paths are listed next to extracted image candidates below.
+                    </p>
+                </header>
+                <div class="overflow-x-auto border border-outline-variant rounded-2xl">
+                    <table class="w-full text-left bg-surface">
+                        <thead class="bg-surface-container-low text-on-surface-variant">
+                            <tr>
+                                <th class="px-4 py-3">Name</th>
+                                <th class="px-4 py-3">Id / Type</th>
+                                <th class="px-4 py-3">Days</th>
+                                <th class="px-4 py-3">Start</th>
+                                <th class="px-4 py-3">End</th>
+                                <th class="px-4 py-3">Asset Paths</th>
+                                <th class="px-4 py-3">Source</th>
+                            </tr>
+                        </thead>
+                        <tbody>{{eventRows}}</tbody>
+                    </table>
+                </div>
+            </section>
+            <section class="w-full border border-outline-variant rounded-3xl p-5 bg-surface-container-lowest flex flex-col gap-5">
+                <header>
+                    <h2 class="text-2xl font-bold text-on-background">Event Banner Candidates</h2>
+                    <p class="text-on-surface-variant">
+                        Korean event list banners extracted from CDN PNG files by stable 1000x184 dimensions and SHA-1 de-duplication.
+                    </p>
+                </header>
+                <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {{bannerCards}}
+                </div>
+            </section>
+            <section class="w-full border border-outline-variant rounded-3xl p-5 bg-surface-container-lowest flex flex-col gap-5">
+                <header>
+                    <h2 class="text-2xl font-bold text-on-background">Event Quest Tables</h2>
+                    <p class="text-on-surface-variant">Converted Starpoint asset tables that contain event quest data.</p>
+                </header>
+                <div class="overflow-x-auto border border-outline-variant rounded-2xl">
+                    <table class="w-full text-left bg-surface">
+                        <thead class="bg-surface-container-low text-on-surface-variant">
+                            <tr>
+                                <th class="px-4 py-3">Table</th>
+                                <th class="px-4 py-3">File</th>
+                                <th class="px-4 py-3">Quests</th>
+                            </tr>
+                        </thead>
+                        <tbody>{{questTableRows}}</tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+</body>
+
+</html>

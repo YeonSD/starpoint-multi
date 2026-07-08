@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import path from "path";
 import playerRoutePlugin from "./player"
 import { formatServerDateForTimeZone, getServerDate, getServerTimeSettings, getServerTimeZone } from "../../utils";
@@ -37,6 +37,14 @@ const routes = async (fastify: FastifyInstance) => {
         reply.send(html)
     })
 
+    fastify.get("/gacha-banners", async (_: FastifyRequest, reply: FastifyReply) => {
+        let html = readFileSync(path.join(__dirname, staticPagesDir, "gacha-banners.html")).toString("utf-8")
+        html = html.replace("{{bannerCards}}", renderGachaBannerCards())
+
+        reply.header("content-type", "text/html; charset=utf-8")
+        reply.send(html)
+    })
+
     fastify.register(playerRoutePlugin, { prefix: "/player" })
     fastify.register(roomsRoutePlugin, { prefix: "/rooms" })
     fastify.register(itemsRoutePlugin, { prefix: "/items" })
@@ -54,6 +62,40 @@ function renderGachaOption(option: GachaScheduleOption): string {
                 data-banner="${escapeHtml(option.bannerPath ?? "")}"
                 ${option.id === "1" ? "selected" : ""}>${escapeHtml(option.label)}</option>
         `;
+}
+
+interface GachaBannerCandidate {
+    index: number
+    file: string
+    width: number
+    height: number
+    sourceArchive: string
+    sourceEntry: string
+    sha1: string
+}
+
+function renderGachaBannerCards(): string {
+    const manifestPath = path.join(__dirname, "../../../.generated/gacha-banners.json")
+    if (!existsSync(manifestPath)) {
+        return `<p class="text-on-surface-variant">No extracted gacha banner candidates were found.</p>`
+    }
+
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf-8")) as GachaBannerCandidate[]
+    if (manifest.length === 0) {
+        return `<p class="text-on-surface-variant">No extracted gacha banner candidates were found.</p>`
+    }
+
+    return manifest.map((candidate) => `
+        <article class="overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-low">
+            <img src="${escapeHtml(candidate.file)}" alt="Gacha banner candidate ${candidate.index}" class="w-full bg-surface-container-high">
+            <div class="grid gap-1 p-3 text-sm">
+                <strong class="text-on-background">#${candidate.index}</strong>
+                <span>${candidate.width}x${candidate.height}</span>
+                <span class="break-all text-xs text-on-surface-variant">${escapeHtml(candidate.sourceArchive)}</span>
+                <span class="break-all text-xs text-on-surface-variant">${escapeHtml(candidate.sha1)}</span>
+            </div>
+        </article>
+    `).join("")
 }
 
 function escapeHtml(value: string): string {

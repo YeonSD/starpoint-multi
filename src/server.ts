@@ -3,6 +3,7 @@ import { ContentTypeParserDoneFunction } from "fastify/types/content-type-parser
 import fastifyStatic from "@fastify/static";
 import { unpack } from "msgpackr";
 import path from "path";
+import { mkdirSync } from "fs";
 import { packMessagePack } from "./lib/msgpack";
 import { dumpHttpFlow } from "./lib/httpDump";
 // api routes
@@ -189,6 +190,14 @@ fastify.register(indexWebApiPlugin, { prefix: "/api" })
 fastify.register(fastifyStatic, {
     root: path.join(__dirname, "..", "web/public"),
     prefix: "/public",
+    decorateReply: false
+})
+
+// generated local assets
+mkdirSync(path.join(__dirname, "..", ".generated/public"), { recursive: true })
+fastify.register(fastifyStatic, {
+    root: path.join(__dirname, "..", ".generated/public"),
+    prefix: "/generated",
     decorateReply: false
 })
 

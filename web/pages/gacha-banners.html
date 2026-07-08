@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/public/tailwind.css">
+    <title>Starpoint - Gacha Banners</title>
+</head>
+
+<body
+    class="bg-background text-on-surface relative mt-16 m-auto max-w-screen-2xl min-h-screen box-border flex flex-col items-start px-3 pb-3">
+    <header class="flex gap-3 items-center md:justify-start justify-center mb-3 w-full">
+        <img src="/public/img/logo.png" class="w-9 h-9">
+        <h1 class="text-4xl mt-4 font-black mb-4 text-on-background">Starpoint</h1>
+    </header>
+    <div class="md:grid md:grid-cols-sidebar flex flex-col gap-5 w-full h-fit">
+        <nav class="px-3 py-5 gap-3 flex flex-col bg-surface-container-low rounded-3xl h-fit w-full">
+            <a href="/" class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">Dashboard</a>
+            <a href="/player" class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">Players</a>
+            <a href="/rooms" class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">Rooms</a>
+            <a href="/items" class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">Items</a>
+            <div class="px-5 py-3 flex gap-3 items-center bg-primary rounded-full w-full font-bold text-on-primary text-lg">Gacha Banners</div>
+            <a href="/source" class="px-5 py-3 flex gap-3 items-center rounded-full hover:bg-surface-container-high text-on-surface text-lg transition-colors">Source Code</a>
+        </nav>
+        <article class="w-full flex flex-col gap-5">
+            <section class="p-5 border border-outline-variant rounded-3xl w-full">
+                <h2 class="text-2xl font-bold text-on-background">Gacha Banner Candidates</h2>
+                <p class="text-on-surface-variant">
+                    These images are extracted from the local CDN. They are candidates from the client gacha banner asset group.
+                    Use them to verify gacha table names before adding explicit mappings.
+                </p>
+                <p class="mt-2 text-sm text-on-surface-variant">
+                    If this page is empty, run <code>python scripts/extract_gacha_banners.py</code> after placing CDN files under <code>.cdn</code>.
+                </p>
+            </section>
+            <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {{bannerCards}}
+            </section>
+        </article>
+    </div>
+</body>
+
+</html>

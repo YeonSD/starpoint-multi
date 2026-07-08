@@ -47,6 +47,14 @@ interface ShareRoomBody extends RoomNumberBody {
     share_type_list?: number[]
 }
 
+interface MultiInvitationJoinBody {
+    viewer_id: number,
+    k?: string,
+    key?: string,
+    attention_key?: string,
+    room_number?: string
+}
+
 interface RestoreRoomBody {
     viewer_id: number,
     room_number: string,
@@ -298,6 +306,31 @@ export function getMultiRoomAdminList() {
     })
 }
 
+function getPlayerRank(player: { rankPoint: number } | null | undefined): number {
+    if (player === null || player === undefined) return 1
+
+    const rankPoint = Math.max(0, player.rankPoint)
+    // Temporary approximation until the client/master rank threshold table is restored.
+    // Current server observations: rank_point 3636 -> rank 32, 5344 -> rank 37.
+    if (rankPoint >= 4500) return Math.max(1, Math.floor(Math.sqrt(rankPoint / 4)) + 1)
+    return Math.max(1, Math.floor(Math.sqrt(rankPoint / 4)) + 2)
+}
+
+function serializeSelectedRoom(request: FastifyRequest, room: MultiRoom) {
+    return {
+        "room_number": room.roomNumber,
+        "category_id": room.categoryId,
+        "quest_id": room.questId,
+        "ip_address": getMultiServerHost(request),
+        "port": getMultiServerPort(),
+        "application_update_url": "",
+        "host_entry_time": room.hostEntryTime,
+        "raising_state": 1,
+        "is_pickup": false,
+        "room_sequence": room.roomSequence
+    }
+}
+
 function serializeRoomSearchResult(request: FastifyRequest, room: MultiRoom) {
     const establisherFollow = Number.parseInt(process.env.STARPOINT_MULTI_SEARCH_ESTABLISHER_FOLLOW ?? "0")
     const establisher = getPlayerSync(room.playerId)
@@ -320,7 +353,7 @@ function serializeRoomSearchResult(request: FastifyRequest, room: MultiRoom) {
         "room_sequence": room.roomSequence,
         "establisher": room.viewerId,
         "establisher_name": establisher?.name ?? "",
-        "establisher_rank": establisher === null || establisher === undefined ? 1 : Math.floor(establisher.rankPoint / 100) + 1,
+        "establisher_rank": getPlayerRank(establisher),
         "establisher_character": leaderCharacterId,
         "establisher_character_evolution_img_level": leaderCharacter?.evolutionLevel ?? 0
     }
@@ -351,9 +384,6 @@ export function getAttentionMultiRecruitments(viewerId: number) {
         )
         .map((room) => {
             const establisher = getEstablisherCharacter(room)
-            const establisherRank = establisher.player === null || establisher.player === undefined
-                ? 1
-                : Math.floor(establisher.player.rankPoint / 100) + 1
 
             return {
                 "attention_key": room.invitationKey,
@@ -362,7 +392,7 @@ export function getAttentionMultiRecruitments(viewerId: number) {
                     "establisher_character": establisher.characterId,
                     "establisher_character_evolution_img_level": establisher.evolutionLevel,
                     "establisher_follow": 0,
-                    "establisher_rank": establisherRank,
+                    "establisher_rank": getPlayerRank(establisher.player),
                     "host_entry_time": room.hostEntryTime,
                     "quest_id": room.questId,
                     "room_number": room.roomNumber
@@ -540,6 +570,55 @@ async function getPlayerIdForViewer(viewerId: number): Promise<number | undefine
     if (!viewerIdSession) return undefined
 
     return (await getAccountPlayers(viewerIdSession.accountId))[0]
+}
+
+export async function joinRoomByInvitation(request: FastifyRequest, body: MultiInvitationJoinBody) {
+    const viewerId = body.viewer_id
+    if (!viewerId || isNaN(viewerId)) return {
+        statusCode: 400,
+        payload: {
+            "error": "Bad Request",
+            "message": "Invalid request body."
+        }
+    }
+
+    const playerId = await getPlayerIdForViewer(viewerId)
+    if (playerId === undefined) return {
+        statusCode: 400,
+        payload: {
+            "error": "Bad Request",
+            "message": "Invalid viewer id."
+        }
+    }
+
+    const key = body.attention_key ?? body.key ?? body.k
+    const room = key !== undefined
+        ? [...rooms.values()].find((candidate) => candidate.invitationKey === key)
+        : body.room_number !== undefined
+            ? rooms.get(body.room_number)
+            : undefined
+
+    if (room === undefined || room.status !== "waiting" || room.participants.size >= 3) {
+        return {
+            statusCode: 404,
+            payload: {
+                "error": "Not Found",
+                "message": "Invitation room not found."
+            }
+        }
+    }
+
+    addRoomParticipant(room, viewerId, playerId)
+
+    return {
+        statusCode: 200,
+        payload: {
+            "data_headers": generateDataHeaders({
+                viewer_id: viewerId
+            }),
+            "data": serializeSelectedRoom(request, room)
+        }
+    }
 }
 
 const routes = async (fastify: FastifyInstance) => {
@@ -754,16 +833,7 @@ const routes = async (fastify: FastifyInstance) => {
                 viewer_id: viewerId
             }),
             "data": {
-                "room_number": room.roomNumber,
-                "category_id": room.categoryId,
-                "quest_id": room.questId,
-                "ip_address": getMultiServerHost(request),
-                "port": getMultiServerPort(),
-                "application_update_url": "",
-                "host_entry_time": room.hostEntryTime,
-                "raising_state": 1,
-                "is_pickup": false,
-                "room_sequence": room.roomSequence
+                ...serializeSelectedRoom(request, room)
             }
         })
     })

@@ -19,6 +19,7 @@ import storyQuestApiPlugin from "./routes/api/storyQuest"
 import optionApiPlugin from "./routes/api/option"
 import singleBattleQuestApiPlugin from "./routes/api/singleBattleQuest"
 import multiBattleQuestApiPlugin from "./routes/api/multiBattleQuest"
+import multiInvitationApiPlugin from "./routes/api/multiInvitation"
 import attentionApiPlugin from "./routes/api/attention"
 import characterApiPlugin from "./routes/api/character"
 import partyGroupApiPlugin from "./routes/api/partyGroup"
@@ -158,6 +159,7 @@ fastify.register(storyQuestApiPlugin, { prefix: `${apiPrefix}/story_quest` })
 fastify.register(optionApiPlugin, { prefix: `${apiPrefix}/option` })
 fastify.register(singleBattleQuestApiPlugin, { prefix: `${apiPrefix}/single_battle_quest` })
 fastify.register(multiBattleQuestApiPlugin, { prefix: `${apiPrefix}/multi_battle_quest` })
+fastify.register(multiInvitationApiPlugin, { prefix: `${apiPrefix}/multi_invitation` })
 fastify.register(attentionApiPlugin, { prefix: `${apiPrefix}/attention` })
 fastify.register(characterApiPlugin, { prefix: `${apiPrefix}/character` })
 fastify.register(partyGroupApiPlugin, { prefix: `${apiPrefix}/party_group` })

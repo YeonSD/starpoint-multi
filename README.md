@@ -38,15 +38,21 @@ TZ="Asia/Seoul"
 `TZ` controls the local timezone shown in the admin dashboard and used by Live server time mode.
 The default is `Asia/Seoul`; change it only if you want to operate the server in another timezone.
 
-Start or update:
+Start for the first time:
+
+```bash
+docker compose up -d --build
+```
+
+Update after pulling new code:
 
 ```bash
 sh scripts/deploy.sh
 ```
 
-Use this script instead of recreating individual services by hand. `nginx`,
-`starpoint`, and `realtime` share the WireGuard container network namespace, so
-the stack must be recreated together after builds.
+Use `scripts/deploy.sh` for updates instead of recreating individual services by
+hand. `nginx`, `starpoint`, and `realtime` share the WireGuard container network
+namespace, so the stack must be recreated together after builds.
 
 Open the admin page:
 
@@ -80,6 +86,9 @@ These folders are local runtime state and are not committed:
 - `.database`: SQLite data, admin password hash, WireGuard registry
 - `.generated`: generated WireGuard config files
 - `.logs`: local HTTP/realtime logs
+
+Built-in CDN mods in `mods/` are copied into `.cdn/mods` automatically when the
+Starpoint container starts.
 
 ## Networking
 

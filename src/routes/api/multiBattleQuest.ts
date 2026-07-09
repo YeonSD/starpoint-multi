@@ -156,6 +156,7 @@ const rooms: Map<string, MultiRoom> = new Map()
 const roomsBySequence: Map<number, MultiRoom> = new Map()
 const roomsByViewer: Map<number, MultiRoom> = new Map()
 const internalToken = process.env.STARPOINT_INTERNAL_TOKEN ?? ""
+const realtimeControlUrl = process.env.STARPOINT_REALTIME_CONTROL_URL ?? "http://127.0.0.1:18889"
 
 function generateRoomNumber(): string {
     let roomNumber = randomInt(0, 1000000).toString().padStart(6, "0")
@@ -206,6 +207,24 @@ function removeRoomParticipant(room: MultiRoom, viewerId: number): void {
         room.viewerId = nextViewerId
         room.playerId = nextPlayerId
     }
+}
+
+function resetRealtimeAutoFillCountdown(room: MultiRoom, reason: string): void {
+    if (internalToken === "") return
+
+    fetch(`${realtimeControlUrl}/reset_autofill`, {
+        method: "POST",
+        headers: {
+            "content-type": "application/json",
+            "x-starpoint-internal-token": internalToken
+        },
+        body: JSON.stringify({
+            room_number: room.roomNumber,
+            reason
+        })
+    }).catch((error) => {
+        console.log(`[multi_battle_quest] realtime autofill reset failed room=${room.roomNumber}: ${error}`)
+    })
 }
 
 function resetRoomForNextRecruitment(room: MultiRoom): void {
@@ -849,6 +868,7 @@ const routes = async (fastify: FastifyInstance) => {
         const roomUrl = room ? buildInvitationUrl(request, room) : ""
         if (room !== undefined) {
             room.sharedAt = getServerTime()
+            resetRealtimeAutoFillCountdown(room, "share_room")
         }
 
         reply.header("content-type", "application/x-msgpack")

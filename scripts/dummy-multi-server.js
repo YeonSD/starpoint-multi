@@ -1,6 +1,7 @@
 const fs = require("fs");
 const net = require("net");
 const dgram = require("dgram");
+const http = require("http");
 const path = require("path");
 
 const host = process.env.STARPOINT_DUMMY_MULTI_HOST || "0.0.0.0";
@@ -15,10 +16,12 @@ const skipEarlyBattleStart = process.env.STARPOINT_DUMMY_MULTI_SKIP_EARLY_BATTLE
 const sendEarlyBattleConnected = process.env.STARPOINT_DUMMY_MULTI_EARLY_CONNECTED === "1";
 const autoFillBotsEnabled = process.env.STARPOINT_DUMMY_MULTI_AUTOFILL_BOTS === "1";
 const autoFillSeconds = Number.parseInt(process.env.STARPOINT_DUMMY_MULTI_AUTOFILL_SECONDS || "60", 10);
+const controlHost = process.env.STARPOINT_DUMMY_MULTI_CONTROL_HOST || "127.0.0.1";
+const controlPort = Number.parseInt(process.env.STARPOINT_DUMMY_MULTI_CONTROL_PORT || "18889", 10);
 const starpointHttpBase = process.env.STARPOINT_HTTP_BASE || "http://127.0.0.1:8000";
 const internalToken = process.env.STARPOINT_INTERNAL_TOKEN || "";
 const maxRoomMates = 3;
-const autoFillNoticeSeconds = new Set([30, 10, 5, 4, 3, 2, 1]);
+const autoFillNoticeSeconds = new Set([30, 10, 5]);
 const logDir = path.join(process.cwd(), ".logs", "multi-realtime");
 fs.mkdirSync(logDir, { recursive: true });
 
@@ -275,6 +278,47 @@ function maybeStartAutoFillCountdown(session, reason) {
     }, 1000);
 }
 
+function restartAutoFillCountdown(session, reason) {
+    clearAutoFillTimer(session);
+    maybeStartAutoFillCountdown(session, reason);
+}
+
+function handleControlRequest(request, response) {
+    if (request.method !== "POST" || request.url !== "/reset_autofill") {
+        response.writeHead(404, { "content-type": "application/json" });
+        response.end(JSON.stringify({ ok: false, error: "not_found" }));
+        return;
+    }
+
+    if (internalToken && request.headers["x-starpoint-internal-token"] !== internalToken) {
+        response.writeHead(403, { "content-type": "application/json" });
+        response.end(JSON.stringify({ ok: false, error: "forbidden" }));
+        return;
+    }
+
+    let body = "";
+    request.on("data", (chunk) => {
+        body += chunk.toString("utf8");
+        if (body.length > 4096) request.destroy();
+    });
+    request.on("end", () => {
+        try {
+            const data = body ? JSON.parse(body) : {};
+            const roomNumber = String(data.room_number || "");
+            const session = roomNumber ? roomSessionsByNumber.get(roomNumber) : undefined;
+            if (session) {
+                restartAutoFillCountdown(session, "share_room");
+                log(`[control] reset_autofill room=${roomNumber}`);
+            }
+            response.writeHead(200, { "content-type": "application/json" });
+            response.end(JSON.stringify({ ok: true, found: Boolean(session) }));
+        } catch (error) {
+            response.writeHead(400, { "content-type": "application/json" });
+            response.end(JSON.stringify({ ok: false, error: error.message }));
+        }
+    });
+}
+
 function resetBattleState(session) {
     clearAutoFillTimer(session);
 
@@ -399,7 +443,7 @@ function removeMateFromSession(session, roomState, reason) {
         notifyHttpRoomEvent("leave", session, viewerId);
         syncHostReadyState(session);
         broadcastMates(session);
-        maybeStartAutoFillCountdown(session, `leave_${reason}`);
+        restartAutoFillCountdown(session, `leave_${reason}`);
         log(`[tcp] room_mate_removed room=${session.roomNumber} reason=${reason} connectionId=${roomState.connectionId} remaining=${session.mates.size}`);
     }
 
@@ -860,7 +904,7 @@ const tcpServer = net.createServer((socket) => {
                         if (isRoomFull(session)) {
                             clearAutoFillTimer(session);
                         } else {
-                            maybeStartAutoFillCountdown(session, "enter");
+                            restartAutoFillCountdown(session, "enter");
                         }
                         startPushHeartbeat();
                     } else if (clientMessageKind === 0 && notifyKind === 1) {
@@ -929,7 +973,7 @@ const tcpServer = net.createServer((socket) => {
                             roomState.session.autoStartEnabled = enabled;
                             sendToSession(roomState.session, autoStartChanged(roomState.connectionId, enabled));
                             if (enabled) {
-                                maybeStartAutoFillCountdown(roomState.session, "auto_start_on");
+                                restartAutoFillCountdown(roomState.session, "auto_start_on");
                             } else {
                                 clearAutoFillTimer(roomState.session);
                             }
@@ -996,6 +1040,11 @@ const tcpServer = net.createServer((socket) => {
 
 tcpServer.listen(port, host, () => {
     log(`[tcp] listening ${host}:${port} responseMode=${responseMode} acceptRoomNumber=${acceptRoomNumber} pushHeartbeatMs=${pushHeartbeatMs} skipEarlyBattleStart=${skipEarlyBattleStart} autoFillBots=${autoFillBotsEnabled} autoFillSeconds=${autoFillSeconds}`);
+});
+
+const controlServer = http.createServer(handleControlRequest);
+controlServer.listen(controlPort, controlHost, () => {
+    log(`[control] listening ${controlHost}:${controlPort}`);
 });
 
 const udpServer = dgram.createSocket("udp4");

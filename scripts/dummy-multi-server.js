@@ -298,7 +298,7 @@ function startBattle(payload) {
 }
 
 function disbanded() {
-    return message([6, "room_state_disbanded"]);
+    return message([6, "battle_message_disconnected"]);
 }
 
 function battleSocketInput(input) {

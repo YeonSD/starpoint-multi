@@ -38,8 +38,12 @@ interface SellBody {
 
 const wrightpieceItemId = 100000
 
-function getEquipmentRarity(equipmentId: number): number {
-    return Math.max(1, Math.floor(equipmentId / 1000000) || Math.floor(equipmentId / 100000))
+function getEquipmentRarityIndex(equipmentId: number): number {
+    const rank = Math.floor(equipmentId / 1000000)
+    if (rank > 0) return Math.max(0, rank - 1)
+
+    const legacyRank = Math.floor(equipmentId / 100000)
+    return Math.max(0, legacyRank - 1)
 }
 
 // wrightpiece cost for each rank of weapon
@@ -53,9 +57,9 @@ const equipmentUpgradeCost = [
 
 // wrightpiece reward for selling each rank of weapon
 const equipmentSellReward = [
-    0,
     2,
-    1,
+    2,
+    3,
     5,
     15
 ]
@@ -92,7 +96,7 @@ const routes = async (fastify: FastifyInstance) => {
         // sell stacks
         for (const toSell of toSellEquipmentList) {
             const equipmentId = toSell.equipment_id
-            const equipmentRarity = getEquipmentRarity(equipmentId)
+            const equipmentRarity = getEquipmentRarityIndex(equipmentId)
 
             // get the data for the equipment
             const playerEquipmentData = getPlayerEquipmentSync(playerId, equipmentId)
@@ -161,7 +165,7 @@ const routes = async (fastify: FastifyInstance) => {
         for (const toSell of toSellEquipmentList) {
             const equipmentId = toSell.equipment_id
             const sellCount = Math.max(1, (toSell as SellStackEquipmentListItem).number)
-            const equipmentRarity = getEquipmentRarity(equipmentId)
+            const equipmentRarity = getEquipmentRarityIndex(equipmentId)
 
             // get the data for the equipment
             const playerEquipmentData = getPlayerEquipmentSync(playerId, equipmentId)
@@ -255,7 +259,7 @@ const routes = async (fastify: FastifyInstance) => {
             "message": "Not enough stack."
         })
 
-        const equipmentRarity = getEquipmentRarity(equipmentId)
+        const equipmentRarity = getEquipmentRarityIndex(equipmentId)
         const wrightPieces = getPlayerItemSync(playerId, wrightpieceItemId) ?? 0
         const upgradeCost = equipmentUpgradeCost[equipmentRarity] ?? 0
         const newWrightPieces = wrightPieces - (upgradeCost * upgradeCount)

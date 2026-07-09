@@ -13,8 +13,11 @@ const debugBattleConnectedAfterSceneReady = process.env.STARPOINT_DUMMY_MULTI_DE
 const wrapBattleSocketInputInSectionCommand = process.env.STARPOINT_DUMMY_MULTI_WRAP_BATTLE_SOCKET === "1";
 const skipEarlyBattleStart = process.env.STARPOINT_DUMMY_MULTI_SKIP_EARLY_BATTLE_START !== "0";
 const sendEarlyBattleConnected = process.env.STARPOINT_DUMMY_MULTI_EARLY_CONNECTED === "1";
+const autoFillBotsEnabled = process.env.STARPOINT_DUMMY_MULTI_AUTOFILL_BOTS === "1";
+const autoFillSeconds = Number.parseInt(process.env.STARPOINT_DUMMY_MULTI_AUTOFILL_SECONDS || "60", 10);
 const starpointHttpBase = process.env.STARPOINT_HTTP_BASE || "http://127.0.0.1:8000";
 const internalToken = process.env.STARPOINT_INTERNAL_TOKEN || "";
+const maxRoomMates = 3;
 const logDir = path.join(process.cwd(), ".logs", "multi-realtime");
 fs.mkdirSync(logDir, { recursive: true });
 
@@ -44,8 +47,28 @@ function getMateKey(mate) {
     return String(mate?.connectionId || mate?.viewerId || mate?.comId || "");
 }
 
+function cloneValue(value) {
+    return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+}
+
+function stripInternalMateFields(mate) {
+    const copy = cloneValue(mate);
+    if (copy && typeof copy === "object") {
+        delete copy.__starpointBot;
+    }
+    return copy;
+}
+
 function getSessionMateList(session) {
-    return [...session.mates.values()];
+    return [...session.mates.values()].map(stripInternalMateFields);
+}
+
+function getRealMateCount(session) {
+    return [...session.mates.values()].filter((mate) => !mate?.__starpointBot).length;
+}
+
+function getExpectedBattlePlayers(session) {
+    return Math.max(1, getRealMateCount(session));
 }
 
 function sendToSession(session, value) {
@@ -118,7 +141,7 @@ function broadcastMates(session) {
 }
 
 function isRoomFull(session) {
-    return session.mates.size >= 3;
+    return session.mates.size >= maxRoomMates;
 }
 
 function isReadyStateReady(state) {
@@ -155,7 +178,101 @@ function syncHostReadyState(session) {
     return true;
 }
 
+function clearAutoFillTimer(session) {
+    if (!session?.autoFillTimer) return;
+    clearInterval(session.autoFillTimer);
+    session.autoFillTimer = undefined;
+    session.autoFillDeadlineMs = undefined;
+}
+
+function getBotSourceMate(session) {
+    return [...session.mates.values()].find((mate) => !mate?.__starpointBot)
+        || [...session.mates.values()][0];
+}
+
+function createBotMate(session, slotIndex) {
+    const source = cloneValue(getBotSourceMate(session)) || {};
+    const botId = 990000000 + slotIndex;
+    const connectionId = `${session.roomNumber || "room"}:bot${slotIndex}`;
+
+    source.__starpointBot = true;
+    source.connectionId = connectionId;
+    source.viewerId = botId;
+    source.comId = botId;
+    source.name = `NPC ${slotIndex}`;
+    source.playerName = `NPC ${slotIndex}`;
+    source.nickname = `NPC ${slotIndex}`;
+    source.isHost = false;
+    source.state = [1];
+
+    return source;
+}
+
+function fillOpenSlotsWithBots(session) {
+    let added = 0;
+    while (session.mates.size < maxRoomMates) {
+        const slotIndex = session.mates.size + 1;
+        const bot = createBotMate(session, slotIndex);
+        session.mates.set(getMateKey(bot), bot);
+        added++;
+    }
+
+    if (added > 0) {
+        syncHostReadyState(session);
+        broadcastMates(session);
+        log(`[tcp] autofill_bots room=${session.roomNumber} added=${added} mates=${session.mates.size}`);
+    }
+
+    return added;
+}
+
+function startBattleForSession(session, reason) {
+    if (!session || session.battleStarted) return false;
+
+    clearAutoFillTimer(session);
+    const startPayload = getSessionMateList(session);
+    session.battleStarted = true;
+    session.battleStartSent = false;
+    session.returningFromBattle = false;
+    session.returnPendingMates.clear();
+    sendToSession(session, startBattle(startPayload));
+    log(`[tcp] start_battle room=${session.roomNumber} reason=${reason} mates=${startPayload.length} realMates=${getRealMateCount(session)}`);
+    maybeSendBattleLoadingConnected(session);
+    maybeSendBattleStart(session);
+    return true;
+}
+
+function maybeStartAutoFillCountdown(session, reason) {
+    if (!autoFillBotsEnabled || !session || session.battleStarted || session.autoFillTimer) return;
+    if (session.returningFromBattle) return;
+    if (!session.autoStartEnabled || isRoomFull(session) || getRealMateCount(session) === 0) return;
+    if (!Number.isFinite(autoFillSeconds) || autoFillSeconds <= 0) return;
+
+    session.autoFillDeadlineMs = Date.now() + autoFillSeconds * 1000;
+    sendToSession(session, startRemainingTime(autoFillSeconds));
+    sendToSession(session, remainingTime(autoFillSeconds));
+    log(`[tcp] autofill_countdown_start room=${session.roomNumber} seconds=${autoFillSeconds} reason=${reason}`);
+
+    session.autoFillTimer = setInterval(() => {
+        if (session.battleStarted || isRoomFull(session) || !session.autoStartEnabled) {
+            clearAutoFillTimer(session);
+            return;
+        }
+
+        const remainingSeconds = Math.max(0, Math.ceil((session.autoFillDeadlineMs - Date.now()) / 1000));
+        sendToSession(session, remainingTime(remainingSeconds));
+
+        if (remainingSeconds > 0) return;
+
+        clearAutoFillTimer(session);
+        fillOpenSlotsWithBots(session);
+        startBattleForSession(session, "autofill_timeout");
+    }, 1000);
+}
+
 function resetBattleState(session) {
+    clearAutoFillTimer(session);
+
     if (session.battleSceneStartRetryTimer) {
         clearInterval(session.battleSceneStartRetryTimer);
         session.battleSceneStartRetryTimer = undefined;
@@ -182,6 +299,10 @@ function resetBattleState(session) {
 
 function resetRoomAfterBattle(session) {
     resetBattleState(session);
+    for (const [mateKey, mate] of session.mates.entries()) {
+        if (mate?.__starpointBot) session.mates.delete(mateKey);
+    }
+
     session.returningFromBattle = true;
     session.returnPendingMates = new Set(session.mates.keys());
 
@@ -191,6 +312,7 @@ function resetRoomAfterBattle(session) {
     }
 
     broadcastMates(session);
+    maybeStartAutoFillCountdown(session, "battle_return");
     log(`[tcp] room_reset_after_battle room=${session.roomNumber} host=${session.hostMateKey || ""} mates=${session.mates.size}`);
 }
 
@@ -219,6 +341,9 @@ function getOrCreateRoomSession(roomNumber, defaults = {}) {
         battleConnectedProbeTimer: undefined,
         battleConnectedProbeSent: false,
         battleLoadingConnectedSent: false,
+        autoStartEnabled: true,
+        autoFillTimer: undefined,
+        autoFillDeadlineMs: undefined,
         returningFromBattle: false,
         returnPendingMates: new Set(),
         mates: new Map(),
@@ -258,6 +383,7 @@ function removeMateFromSession(session, roomState, reason) {
     }
 
     if (session.mates.size === 0) {
+        clearAutoFillTimer(session);
         notifyHttpRoomEvent("empty", session, viewerId);
         roomSessionsByNumber.delete(session.roomNumber || "");
         session.sockets.clear();
@@ -267,6 +393,7 @@ function removeMateFromSession(session, roomState, reason) {
         notifyHttpRoomEvent("leave", session, viewerId);
         syncHostReadyState(session);
         broadcastMates(session);
+        maybeStartAutoFillCountdown(session, `leave_${reason}`);
         log(`[tcp] room_mate_removed room=${session.roomNumber} reason=${reason} connectionId=${roomState.connectionId} remaining=${session.mates.size}`);
     }
 
@@ -293,12 +420,24 @@ function stateChanged(connectionId, readyState) {
     return message([2, connectionId || "", readyState]);
 }
 
+function autoStartChanged(connectionId, enabled) {
+    return message([4, connectionId || "", Boolean(enabled)]);
+}
+
 function startBattle(payload) {
     return message([5, payload]);
 }
 
 function disbanded() {
     return message([6, "battle_message_disconnected"]);
+}
+
+function remainingTime(seconds) {
+    return message([7, Math.max(0, Number.parseInt(seconds, 10) || 0)]);
+}
+
+function startRemainingTime(seconds) {
+    return message([9, Math.max(0, Number.parseInt(seconds, 10) || 0)]);
 }
 
 function battleSocketInput(input) {
@@ -340,7 +479,7 @@ function maybeSendBattleStart(session) {
 
     if (!session.battleStarted || session.battleStartSent) return;
 
-    const expectedPlayers = Math.max(1, session.mates.size);
+    const expectedPlayers = getExpectedBattlePlayers(session);
     if (session.battleSockets.size < expectedPlayers) return;
 
     sendToBattleSession(session, battleStart());
@@ -351,7 +490,7 @@ function maybeSendBattleStart(session) {
 function maybeSendBattleLoadingConnected(session) {
     if (!sendEarlyBattleConnected || !session.battleStarted || session.battleLoadingConnectedSent) return;
 
-    const expectedPlayers = Math.max(1, session.mates.size);
+    const expectedPlayers = getExpectedBattlePlayers(session);
     if (session.battleSockets.size < expectedPlayers) return;
 
     session.battleLoadingConnectedSent = true;
@@ -420,7 +559,7 @@ function scheduleBattleConnectedProbe(session) {
 function maybeSendBattleSceneStart(session) {
     if (!session.battleStarted || session.battleSceneStartSent) return;
 
-    const expectedPlayers = Math.max(1, session.mates.size);
+    const expectedPlayers = getExpectedBattlePlayers(session);
     if (session.battleSceneReady.size < expectedPlayers) {
         log(`[tcp] battle_scene_start_wait room=${session.roomNumber} ready=${session.battleSceneReady.size} expected=${expectedPlayers}`);
         return;
@@ -712,6 +851,11 @@ const tcpServer = net.createServer((socket) => {
                         sendJson(socket, peer, welcome(buildRoomPayload(session), getSessionMateList(session)));
                         syncHostReadyState(session);
                         broadcastMates(session);
+                        if (isRoomFull(session)) {
+                            clearAutoFillTimer(session);
+                        } else {
+                            maybeStartAutoFillCountdown(session, "enter");
+                        }
                         startPushHeartbeat();
                     } else if (clientMessageKind === 0 && notifyKind === 1) {
                         if (roomState?.session && roomState.mateKey) {
@@ -724,6 +868,7 @@ const tcpServer = net.createServer((socket) => {
                             } else if (isPendingBattleReturn(session, roomState.mateKey)) {
                                 log(`[tcp] lobby_bye_ignored_after_battle room=${session.roomNumber} connectionId=${roomState.connectionId}`);
                             } else if (session.hostMateKey === roomState.mateKey) {
+                                clearAutoFillTimer(session);
                                 sendToSession(session, disbanded(roomState.connectionId));
                                 notifyHttpRoomEvent("disband", session, getViewerIdFromRoomState(roomState));
                                 roomSessionsByNumber.delete(session.roomNumber || "");
@@ -759,6 +904,7 @@ const tcpServer = net.createServer((socket) => {
                                 sendToSession(roomState.session, stateChanged(roomState.connectionId, readyState));
                                 syncHostReadyState(roomState.session);
                                 broadcastMates(roomState.session);
+                                maybeStartAutoFillCountdown(roomState.session, "ready");
                             }
                         }
                     } else if (clientMessageKind === 0 && notifyKind === 4) {
@@ -767,17 +913,21 @@ const tcpServer = net.createServer((socket) => {
                         log(`[tcp] notify ${peer} kind=${notifyKind} name=${notifyName}`);
                     } else if (clientMessageKind === 0 && notifyKind === 6) {
                         if (roomState?.session && roomState.mateKey === roomState.session.hostMateKey) {
-                            const startPayload = getSessionMateList(roomState.session);
-                            roomState.session.battleStarted = true;
-                            roomState.session.battleStartSent = false;
-                            roomState.session.returningFromBattle = false;
-                            roomState.session.returnPendingMates.clear();
-                            sendToSession(roomState.session, startBattle(startPayload));
-                            log(`[tcp] start_battle room=${roomState.session.roomNumber} host=${roomState.connectionId} mates=${startPayload.length}`);
-                            maybeSendBattleLoadingConnected(roomState.session);
-                            maybeSendBattleStart(roomState.session);
+                            startBattleForSession(roomState.session, `host_${roomState.connectionId}`);
                         } else {
                             log(`[tcp] start_battle_denied_non_host ${peer} connectionId=${roomState?.connectionId}`);
+                        }
+                    } else if (clientMessageKind === 0 && notifyKind === 8) {
+                        if (roomState?.session && roomState.mateKey) {
+                            const enabled = Boolean(notify[1]);
+                            roomState.session.autoStartEnabled = enabled;
+                            sendToSession(roomState.session, autoStartChanged(roomState.connectionId, enabled));
+                            if (enabled) {
+                                maybeStartAutoFillCountdown(roomState.session, "auto_start_on");
+                            } else {
+                                clearAutoFillTimer(roomState.session);
+                            }
+                            log(`[tcp] auto_start_changed room=${roomState.session.roomNumber} connectionId=${roomState.connectionId} enabled=${enabled}`);
                         }
                     } else {
                         log(`[tcp] unhandled_client_message ${peer} kind=${clientMessageKind} notifyKind=${notifyKind} notifyName=${notifyName}`);
@@ -821,6 +971,7 @@ const tcpServer = net.createServer((socket) => {
             }
             if (roomState.mateKey && session.mates.has(roomState.mateKey)) {
                 if (session.hostMateKey === roomState.mateKey) {
+                    clearAutoFillTimer(session);
                     sendToSession(session, disbanded(roomState.connectionId));
                     notifyHttpRoomEvent("disband", session, getViewerIdFromRoomState(roomState));
                     roomSessionsByNumber.delete(session.roomNumber || "");
@@ -838,7 +989,7 @@ const tcpServer = net.createServer((socket) => {
 });
 
 tcpServer.listen(port, host, () => {
-    log(`[tcp] listening ${host}:${port} responseMode=${responseMode} acceptRoomNumber=${acceptRoomNumber} pushHeartbeatMs=${pushHeartbeatMs} skipEarlyBattleStart=${skipEarlyBattleStart}`);
+    log(`[tcp] listening ${host}:${port} responseMode=${responseMode} acceptRoomNumber=${acceptRoomNumber} pushHeartbeatMs=${pushHeartbeatMs} skipEarlyBattleStart=${skipEarlyBattleStart} autoFillBots=${autoFillBotsEnabled} autoFillSeconds=${autoFillSeconds}`);
 });
 
 const udpServer = dgram.createSocket("udp4");
@@ -852,5 +1003,5 @@ udpServer.on("error", (error) => {
 });
 
 udpServer.bind(port, host, () => {
-    log(`[udp] listening ${host}:${port} responseMode=${responseMode} acceptRoomNumber=${acceptRoomNumber} pushHeartbeatMs=${pushHeartbeatMs} skipEarlyBattleStart=${skipEarlyBattleStart}`);
+    log(`[udp] listening ${host}:${port} responseMode=${responseMode} acceptRoomNumber=${acceptRoomNumber} pushHeartbeatMs=${pushHeartbeatMs} skipEarlyBattleStart=${skipEarlyBattleStart} autoFillBots=${autoFillBotsEnabled} autoFillSeconds=${autoFillSeconds}`);
 });

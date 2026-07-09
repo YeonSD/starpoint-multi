@@ -3,7 +3,7 @@ import { readFileSync } from "fs";
 import path from "path";
 import { staticPagesDir } from ".";
 import { getAllPlayersSync, getPlayerItemsSync } from "../../data/wdfpData";
-import { listScheduledCurrencyGrants, ScheduledCurrencyGrant } from "../../lib/itemGrantSchedules";
+import { GrantTarget, listScheduledCurrencyGrants, ScheduledCurrencyGrant } from "../../lib/itemGrantSchedules";
 import { getItemCatalogEntries, ItemCatalogEntry } from "../../lib/itemCatalog";
 
 function escapeHtml(value: string | number): string {
@@ -35,12 +35,25 @@ function grantTargetLabel(target: ScheduledCurrencyGrant["currency"]): string {
 }
 
 function formatCatalogLabel(entry: ItemCatalogEntry): string {
+    const manualLabels: Record<string, string> = {
+        "free_vmoney": "성도석 (Lodestar Beads)",
+        "free_mana": "마나 (Mana)",
+        "exp_pool": "경험치 (Experience)",
+        "bond_token": "인연의 증표 (Bond Token)",
+        "craft_point": "대장장이 구슬 (Blacksmith Beads)"
+    };
+    if (manualLabels[entry.key] !== undefined) return manualLabels[entry.key];
+
     return `${entry.nameKo} (${entry.nameEn})`;
 }
 
-function renderGrantOptions(): string {
+function renderGrantOptions(includeDirectOnly: boolean): string {
+    const grantKeys: GrantTarget[] = includeDirectOnly
+        ? ["free_vmoney", "free_mana", "exp_pool", "bond_token", "craft_point"]
+        : ["free_vmoney", "free_mana", "exp_pool", "bond_token"];
+
     return getItemCatalogEntries()
-        .filter((entry) => entry.kind === "currency" && (entry.key === "free_vmoney" || entry.key === "free_mana" || entry.key === "exp_pool"))
+        .filter((entry) => entry.kind === "currency" && grantKeys.includes(entry.key as GrantTarget))
         .map((entry) => {
             const label = formatCatalogLabel(entry);
             return `<option value="${escapeHtml(`${entry.key} | ${label}`)}"></option>`;
@@ -140,7 +153,8 @@ const routes = async (fastify: FastifyInstance) => {
                     <span class="text-on-surface-variant">#${player.id}</span>
                 </label>
             `).join("") || `<p class="text-on-surface-variant">No players found.</p>`)
-            .replace("{{grantOptions}}", renderGrantOptions())
+            .replace("{{grantOptions}}", renderGrantOptions(true))
+            .replace("{{scheduleGrantOptions}}", renderGrantOptions(false))
             .replace("{{scheduleRows}}", renderScheduleRows(schedules))
             .replace("{{defaultFirstRun}}", formatDateTimeLocal(defaultFirstRun));
 

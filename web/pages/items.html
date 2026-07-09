@@ -66,8 +66,8 @@
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <div>
                             <h2 class="text-2xl font-bold text-on-background">Currency Management</h2>
-                            <p id="grant-status" class="text-on-surface-variant">Send lodestar beads, mana, or experience by
-                                in-game mail, or apply the change directly to player saves.</p>
+                            <p id="grant-status" class="text-on-surface-variant">Send mail-supported rewards by in-game
+                                mail, or apply supported values directly to player saves.</p>
                         </div>
                     </div>
                 </header>
@@ -120,7 +120,7 @@
                 </header>
                 <form id="schedule-form" class="flex flex-col gap-3">
                     <section class="grid md:grid-cols-[1fr_160px_160px_220px_auto] gap-3">
-                        <input name="grant_key" list="grant-options" value="free_vmoney | 성도석 (Lodestar Beads)"
+                        <input name="grant_key" list="schedule-grant-options" value="free_vmoney | 성도석 (Lodestar Beads)"
                             placeholder="Search currency"
                             class="bg-surface-container rounded-2xl border border-outline-variant p-3" required>
                         <input name="amount" type="number" min="1" value="1"
@@ -167,6 +167,9 @@
     </div>
     <datalist id="grant-options">
         {{grantOptions}}
+    </datalist>
+    <datalist id="schedule-grant-options">
+        {{scheduleGrantOptions}}
     </datalist>
     <script>
         function normalizeGrantKey(value) {

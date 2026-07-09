@@ -1,11 +1,12 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
-import { getAllPlayersSync, getPlayerSync, updatePlayerSync } from "../data/wdfpData";
+import { getAllPlayersSync, getPlayerItemSync, getPlayerSync, givePlayerItemSync, updatePlayerItemSync, updatePlayerSync } from "../data/wdfpData";
 import { MailCurrency, sendCurrencyMailToPlayers } from "./mail";
 
-export type GrantCurrency = Exclude<MailCurrency, "bond_token">;
-export type GrantTarget = GrantCurrency;
+export type GrantCurrency = MailCurrency;
+export type GrantTarget = GrantCurrency | "craft_point";
+export type ScheduledGrantTarget = GrantCurrency;
 export type ScheduledGrantInterval = "daily" | "weekly" | "monthly";
 
 export interface CurrencyGrantResult {
@@ -23,7 +24,7 @@ export interface CurrencyGrantResult {
 
 export interface ScheduledCurrencyGrant {
     id: string
-    currency: GrantTarget
+    currency: ScheduledGrantTarget
     amount: number
     subject: string | null
     description: string | null
@@ -40,14 +41,19 @@ const schedulesPath = path.join(databaseDir, "item-grant-schedules.json");
 let runner: ReturnType<typeof setInterval> | null = null;
 
 export function isGrantCurrency(value: unknown): value is GrantCurrency {
-    return value === "free_vmoney" || value === "free_mana" || value === "exp_pool";
+    return value === "free_vmoney" || value === "free_mana" || value === "exp_pool" || value === "bond_token";
 }
 
 export function isGrantTarget(value: unknown): value is GrantTarget {
+    return isGrantCurrency(value) || value === "craft_point";
+}
+
+export function isScheduledGrantTarget(value: unknown): value is ScheduledGrantTarget {
     return isGrantCurrency(value);
 }
 
 export function grantTargetToItemId(target: GrantTarget): number | null {
+    if (target === "craft_point") return 100000;
     return null;
 }
 
@@ -64,7 +70,7 @@ export function grantCurrencyToPlayers(
     currency: GrantTarget,
     amount: number
 ): CurrencyGrantResult[] {
-    if (!isGrantCurrency(currency)) return [];
+    if (!isGrantTarget(currency)) return [];
 
     return playerIds.map((playerId) => {
         const player = getPlayerSync(playerId);
@@ -76,17 +82,49 @@ export function grantCurrencyToPlayers(
             };
         }
 
+        if (currency === "craft_point") {
+            const itemId = grantTargetToItemId(currency);
+            if (itemId === null) {
+                return {
+                    player_id: playerId,
+                    skipped: true,
+                    reason: "Unsupported item grant target."
+                };
+            }
+
+            const owned = getPlayerItemSync(playerId, itemId);
+            const total = Math.max(0, (owned ?? 0) + amount);
+            if (owned === null) {
+                givePlayerItemSync(playerId, itemId, total);
+            } else {
+                updatePlayerItemSync(playerId, itemId, total);
+            }
+
+            return {
+                player_id: playerId,
+                item_id: itemId,
+                target: currency,
+                amount: amount,
+                total: total,
+                delivery: "direct"
+            };
+        }
+
         const total = Math.max(0, currency === "free_vmoney"
             ? player.freeVmoney + amount
             : currency === "free_mana"
                 ? player.freeMana + amount
-                : player.expPool + amount);
+                : currency === "exp_pool"
+                    ? player.expPool + amount
+                    : player.bondToken + amount);
 
         updatePlayerSync(currency === "free_vmoney"
             ? { id: playerId, freeVmoney: total }
             : currency === "free_mana"
                 ? { id: playerId, freeMana: total }
-                : { id: playerId, expPool: total, expPooledTime: new Date() });
+                : currency === "exp_pool"
+                    ? { id: playerId, expPool: total, expPooledTime: new Date() }
+                    : { id: playerId, bondToken: total });
 
         return {
             player_id: playerId,
@@ -106,7 +144,18 @@ export function sendCurrencyMailGrantToPlayers(
     subject?: string,
     description?: string
 ): CurrencyGrantResult[] {
-    if (!isGrantCurrency(currency)) return [];
+    if (!isGrantTarget(currency)) return [];
+    if (currency === "craft_point") {
+        return playerIds.map((playerId) => ({
+            player_id: playerId,
+            item_id: grantTargetToItemId(currency) ?? undefined,
+            amount,
+            skipped: true,
+            reason: "Blacksmith Beads mail is not supported yet. Use Direct delivery.",
+            target: currency,
+            delivery: "mail"
+        }));
+    }
 
     return sendCurrencyMailToPlayers(playerIds, currency, amount, subject, description).map((entry): CurrencyGrantResult => ({
         player_id: entry.player_id,
@@ -125,7 +174,7 @@ export function listScheduledCurrencyGrants(): ScheduledCurrencyGrant[] {
 }
 
 export function createScheduledCurrencyGrant(input: {
-    currency: GrantTarget,
+    currency: ScheduledGrantTarget,
     amount: number,
     interval: ScheduledGrantInterval,
     nextRunAt?: Date,
@@ -276,7 +325,7 @@ function isSchedule(value: unknown): value is ScheduledCurrencyGrant {
     if (typeof value !== "object" || value === null) return false;
     const schedule = value as Partial<ScheduledCurrencyGrant>;
     return typeof schedule.id === "string"
-        && isGrantTarget(schedule.currency)
+        && isScheduledGrantTarget(schedule.currency)
         && typeof schedule.amount === "number"
         && Number.isInteger(schedule.amount)
         && schedule.amount > 0

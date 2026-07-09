@@ -297,8 +297,8 @@ function startBattle(payload) {
     return message([5, payload]);
 }
 
-function disbanded(connectionId) {
-    return message([6, connectionId || ""]);
+function disbanded() {
+    return message([6, "room_state_disbanded"]);
 }
 
 function battleSocketInput(input) {

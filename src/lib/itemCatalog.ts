@@ -141,6 +141,16 @@ const currencyEntries: ItemCatalogEntry[] = [
         categoryKo: "재화",
         confidence: "confirmed",
         sources: ["save.json", "client_ui"]
+    },
+    {
+        key: "craft_point",
+        kind: "currency",
+        id: 100000,
+        nameKo: "대장장이 구슬",
+        nameEn: "Blacksmith Beads",
+        categoryKo: "장비 각성",
+        confidence: "confirmed",
+        sources: ["assets/item_master.generated.json", "save.json", "equipment_breakdown"]
     }
 ];
 

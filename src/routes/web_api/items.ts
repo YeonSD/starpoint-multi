@@ -4,8 +4,8 @@ import {
     deleteScheduledCurrencyGrant,
     getAllPlayerIdsForGrant,
     grantCurrencyToPlayers,
-    isGrantCurrency,
     isGrantTarget,
+    isScheduledGrantTarget,
     isScheduledGrantInterval,
     listScheduledCurrencyGrants,
     runScheduledCurrencyGrantNow,
@@ -95,10 +95,10 @@ const routes = async (fastify: FastifyInstance) => {
             ? undefined
             : new Date(body.next_run_at);
 
-        if (!isGrantTarget(currency) || !isScheduledGrantInterval(interval) || !Number.isInteger(amount) || amount <= 0) {
+        if (!isScheduledGrantTarget(currency) || !isScheduledGrantInterval(interval) || !Number.isInteger(amount) || amount <= 0) {
             return reply.status(400).send({
                 "error": "Bad Request",
-                "message": "Select a supported grant target, period, and positive amount."
+                "message": "Select a mail-supported grant target, period, and positive amount."
             });
         }
 

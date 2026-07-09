@@ -38,6 +38,10 @@ interface SellBody {
 
 const wrightpieceItemId = 100000
 
+function getEquipmentRarity(equipmentId: number): number {
+    return Math.max(1, Math.floor(equipmentId / 1000000) || Math.floor(equipmentId / 100000))
+}
+
 // wrightpiece cost for each rank of weapon
 const equipmentUpgradeCost = [
     5,
@@ -50,7 +54,7 @@ const equipmentUpgradeCost = [
 // wrightpiece reward for selling each rank of weapon
 const equipmentSellReward = [
     0,
-    0,
+    2,
     1,
     5,
     15
@@ -88,7 +92,7 @@ const routes = async (fastify: FastifyInstance) => {
         // sell stacks
         for (const toSell of toSellEquipmentList) {
             const equipmentId = toSell.equipment_id
-            const equipmentRarity = Math.floor(equipmentId / 1000000) - 1
+            const equipmentRarity = getEquipmentRarity(equipmentId)
 
             // get the data for the equipment
             const playerEquipmentData = getPlayerEquipmentSync(playerId, equipmentId)
@@ -157,7 +161,7 @@ const routes = async (fastify: FastifyInstance) => {
         for (const toSell of toSellEquipmentList) {
             const equipmentId = toSell.equipment_id
             const sellCount = Math.max(1, (toSell as SellStackEquipmentListItem).number)
-            const equipmentRarity = Math.floor(equipmentId / 1000000) - 1
+            const equipmentRarity = getEquipmentRarity(equipmentId)
 
             // get the data for the equipment
             const playerEquipmentData = getPlayerEquipmentSync(playerId, equipmentId)
@@ -251,7 +255,7 @@ const routes = async (fastify: FastifyInstance) => {
             "message": "Not enough stack."
         })
 
-        const equipmentRarity = Math.floor(equipmentId / 1000000) - 1
+        const equipmentRarity = getEquipmentRarity(equipmentId)
         const wrightPieces = getPlayerItemSync(playerId, wrightpieceItemId) ?? 0
         const upgradeCost = equipmentUpgradeCost[equipmentRarity] ?? 0
         const newWrightPieces = wrightPieces - (upgradeCost * upgradeCount)

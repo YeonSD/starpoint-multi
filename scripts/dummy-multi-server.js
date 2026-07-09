@@ -18,6 +18,7 @@ const autoFillSeconds = Number.parseInt(process.env.STARPOINT_DUMMY_MULTI_AUTOFI
 const starpointHttpBase = process.env.STARPOINT_HTTP_BASE || "http://127.0.0.1:8000";
 const internalToken = process.env.STARPOINT_INTERNAL_TOKEN || "";
 const maxRoomMates = 3;
+const autoFillNoticeSeconds = new Set([30, 10, 5, 4, 3, 2, 1]);
 const logDir = path.join(process.cwd(), ".logs", "multi-realtime");
 fs.mkdirSync(logDir, { recursive: true });
 
@@ -183,6 +184,7 @@ function clearAutoFillTimer(session) {
     clearInterval(session.autoFillTimer);
     session.autoFillTimer = undefined;
     session.autoFillDeadlineMs = undefined;
+    session.autoFillNotifiedSeconds = undefined;
 }
 
 function getBotSourceMate(session) {
@@ -249,8 +251,8 @@ function maybeStartAutoFillCountdown(session, reason) {
     if (!Number.isFinite(autoFillSeconds) || autoFillSeconds <= 0) return;
 
     session.autoFillDeadlineMs = Date.now() + autoFillSeconds * 1000;
+    session.autoFillNotifiedSeconds = new Set();
     sendToSession(session, startRemainingTime(autoFillSeconds));
-    sendToSession(session, remainingTime(autoFillSeconds));
     log(`[tcp] autofill_countdown_start room=${session.roomNumber} seconds=${autoFillSeconds} reason=${reason}`);
 
     session.autoFillTimer = setInterval(() => {
@@ -260,7 +262,10 @@ function maybeStartAutoFillCountdown(session, reason) {
         }
 
         const remainingSeconds = Math.max(0, Math.ceil((session.autoFillDeadlineMs - Date.now()) / 1000));
-        sendToSession(session, remainingTime(remainingSeconds));
+        if (autoFillNoticeSeconds.has(remainingSeconds) && !session.autoFillNotifiedSeconds.has(remainingSeconds)) {
+            session.autoFillNotifiedSeconds.add(remainingSeconds);
+            sendToSession(session, remainingTime(remainingSeconds));
+        }
 
         if (remainingSeconds > 0) return;
 
@@ -344,6 +349,7 @@ function getOrCreateRoomSession(roomNumber, defaults = {}) {
         autoStartEnabled: true,
         autoFillTimer: undefined,
         autoFillDeadlineMs: undefined,
+        autoFillNotifiedSeconds: undefined,
         returningFromBattle: false,
         returnPendingMates: new Set(),
         mates: new Map(),

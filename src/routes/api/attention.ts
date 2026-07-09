@@ -12,6 +12,26 @@ interface CheckBody {
     request_number: number
 }
 
+interface AttentionBody {
+    viewer_id?: number
+}
+
+function getViewerIdFromBody(body: unknown): number {
+    if (typeof body !== "object" || body === null) return 0
+    const value = (body as AttentionBody).viewer_id
+    return typeof value === "number" && !isNaN(value) ? value : 0
+}
+
+function sendEmptyAttentionResponse(reply: FastifyReply, viewerId: number = 0) {
+    reply.header("content-type", "application/x-msgpack")
+    return reply.status(200).send({
+        "data_headers": generateDataHeaders({
+            viewer_id: viewerId
+        }),
+        "data": {}
+    })
+}
+
 const routes = async (fastify: FastifyInstance) => {
     fastify.post("/check", async (request: FastifyRequest, reply: FastifyReply) => {
         const body = request.body as CheckBody
@@ -76,6 +96,14 @@ const routes = async (fastify: FastifyInstance) => {
             }),
             "data": data
         })
+    })
+
+    fastify.post("/action", async (request: FastifyRequest, reply: FastifyReply) => {
+        return sendEmptyAttentionResponse(reply, getViewerIdFromBody(request.body))
+    })
+
+    fastify.post("/logger", async (request: FastifyRequest, reply: FastifyReply) => {
+        return sendEmptyAttentionResponse(reply, getViewerIdFromBody(request.body))
     })
 }
 
